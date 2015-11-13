@@ -79,6 +79,7 @@ opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
 
 # need to find (near) duplicated in each year 
 # tricky because you need to do all that stuff with wifepresent etc. again
+# j: would you say true duplicates are more likely to be close to each other?
 
 plot(tapply(opg$wifepresent, opg$year, function(x) sum(x)/length(x)), type='l')
 
@@ -99,14 +100,7 @@ datlist <- list()
 #     cat(year[1], year[2], '\n\n')
 # }
 
-# make this a function somehow?
-for (i in 2:length(years)){
-# for (i in 2:3){
-    print(i)
-    dat_y1 <- opg[opg$year==years[i - 1], ]
-    dat_y2 <- opg[opg$year==years[i], ]
-
-    # function datcombine
+strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast'){
     lastmat <- stringdistmatrix(dat_y1$mlast, dat_y2$mlast, method='jw', p=0.1, useNames=TRUE)
     candidates <- apply(lastmat, 2, function(x) which(x < 0.15))
     candidates[lapply(candidates, length)==0] <- NA
@@ -116,8 +110,14 @@ for (i in 2:length(years)){
 
     dat_y12 <- data.frame(dat_y1[y1candidates, idvars], dat_y2[y2positions, idvars])
 
-    # function stringdists/makevrbs
-    dat_y12$index <- y2positions
+    dat_y12$mtchs <- rep(sapply(candidates, length), lapply(candidates, length))
+    dat_y12$mtchs[is.na(y1candidates)] <- 0 # easier way?
+    dat_y12$mtchs <- dat_y12$mtchs / max(dat_y12$mtchs, na.rm=T)
+
+    return(dat_y12)
+}
+
+score <- function(dat_y12){
     dat_y12$mlastdist <- stringdist(dat_y12$mlast, dat_y12$mlast.1, method='jw', p=0.1)
     dat_y12$mfirstdist <- stringdist(dat_y12$mfirst, dat_y12$mfirst.1, method='jw', p=0.1)
     dat_y12$minidist <- stringdist(dat_y12$minitials, dat_y12$minitials.1, method='jw', p=0.1)
@@ -130,9 +130,6 @@ for (i in 2:length(years)){
     dat_y12$wlastsdx <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='soundex')
     dat_y12$wfirstsdx <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='soundex')
 
-    dat_y12$mtchs <- rep(sapply(candidates, length), lapply(candidates, length))
-    dat_y12$mtchs[is.na(y1candidates)] <- 0 # easier way?
-    dat_y12$mtchs <- dat_y12$mtchs / max(dat_y12$mtchs, na.rm=T)
     dat_y12$exactmtch <- dat_y12$mfirst==dat_y12$mfirst.1 & dat_y12$mlast==dat_y12$mlast.1
 
     weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
@@ -140,7 +137,7 @@ for (i in 2:length(years)){
                  mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
                  mtchs=1)
     mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-                 mlastsdx=4, mfirstsdx=2), old=2, young=2)
+                 mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
     wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
                  wlastsdx=2, wfirstsdx=1)
     dat_y12$score <- rowSums(t(t(dat_y12[names(weights)]) * weights)) / sum(weights)
@@ -148,8 +145,19 @@ for (i in 2:length(years)){
     dat_y12$mscore <- rowSums(t(t(dat_y12[names(mwgts)]) * mwgts)) / sum(mwgts)
     dat_y12$wscore <- rowSums(t(t(dat_y12[names(wwgts)]) * wwgts)) / sum(wwgts)
     dat_y12$oscore <- ifelse(dat_y12$wifepresent, (sum(mwgts) * dat_y12$mscore + sum(wwgts) * dat_y12$wscore) / (sum(mwgts) + sum(wwgts)), dat_y12$mscore)
- 
-    # aggregate(dat_y12$score, by=list(dat_y12$index), function(x) x[which.min(x)])
+
+    return(dat_y12)
+}
+
+# make this a function somehow?
+for (i in 2:length(years)){
+# for (i in 2:3){
+    print(i)
+    dat_y1 <- opg[opg$year==years[i - 1], ]
+    dat_y2 <- opg[opg$year==years[i], ]
+
+    dat_y12 <- strdistcombine(dat_y1, dat_y2)
+    dat_y12 <- score(dat_y12)
 
     firstpass <- do.call(rbind, lapply(split(dat_y12, dat_y12$persid), function(dat) dat[which.min(dat$oscore), ]))
     secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$oscore), ]))
@@ -164,11 +172,6 @@ for (i in 2:length(years)){
     datlist[[nm]] <- out_y1
 }
 
-for (dat in datlist){
-    cat(sum(duplicated(dat$persid, incomparables=NA)), '\n')
-    cat(sum(duplicated(dat$persid.1, incomparables=NA)), '\n\n---\n')
-}
-
 matchmat <- merge(datlist[[1]][, c('persid', 'persid.1')], 
     datlist[[2]][, c('persid', 'persid.1')], by.x='persid.1', by.y='persid', all=T)
 for (i in 3:length(datlist)){
@@ -176,7 +179,6 @@ for (i in 3:length(datlist)){
     names(matchmat) <- paste0('persid', rks)
     matchmat <- merge(matchmat, datlist[[i]][, c('persid', 'persid.1')], by.x=paste0('persid', max(rks)), by.y='persid', all=T)    
 }
-sum(duplicated(matchmat))
 
 tb <- data.frame(table(rowSums(!is.na(matchmat))))
 data.frame(rev(tb[, 1]), cumsum(rev(tb[, 2])))
@@ -184,7 +186,7 @@ data.frame(rev(tb[, 1]), cumsum(rev(tb[, 2])))
 sum(as.numeric(tb[,1]) * tb[,2])
 dim(opg)
 pdf('matchlengths.pdf')
-hist(rowSums(!is.na(matchmat)))
+hist(rowSums(!is.na(matchmat)), breaks=length(years) - 1)
 dev.off()
 
 matchdat <- do.call(rbind, datlist) # tweak a little to end up with the complete original dataset + matches
@@ -196,6 +198,7 @@ for (row in 1:nrow(matchmat)){
     matchdat$index[matchdat$persid %in% na.omit(matchmat[row, ])] <- row
     opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
 }
+
 # write.csv(matchdat[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
 # go over that, more stringently
 
