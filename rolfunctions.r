@@ -15,6 +15,17 @@ initials <- function(strings){
     return(paste0(intls, collapse=''))
 }
 
+glmperf <- function(cutoff, mod, y){
+    yhat <- mod$fit > cutoff
+    w <- which(y==1)
+    sens <- mean(yhat[w] == 1)
+    spec <- mean(yhat[-w] == 0)
+    dstnc <- sqrt((sens - 1)^2 + (spec - 1)^2)
+    corclsf <- mean(y==yhat)
+    out <- t(as.matrix(c(sens, spec, dstnc, corclsf)))
+    return(out)
+}
+
 strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast', ...){
     lastmat <- stringdistmatrix(dat_y1$mlast, dat_y2$mlast, method='jw', p=0.1, useNames=TRUE, ...)
     candidates <- apply(lastmat, 2, function(x) which(x < 0.15))
@@ -55,7 +66,7 @@ score <- function(dat_y12){
                  mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
     wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
                  wlastsdx=2, wfirstsdx=1)
-    
+
     dat_y12$score <- rowSums(t(t(dat_y12[names(weights)]) * weights)) / sum(weights)
 
     dat_y12$mscore <- rowSums(t(t(dat_y12[names(mwgts)]) * mwgts)) / sum(mwgts)
