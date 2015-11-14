@@ -1,6 +1,7 @@
-opg <- read.csv('fgvf15oct.csv')
 tra <- read.csv('matched.csv')
-dim(opg)
+tra <- tra[1:608, ]
+
+opg <- read.csv('fgvf15oct.csv')
 
 opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
 opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
