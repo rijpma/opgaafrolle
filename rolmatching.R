@@ -19,7 +19,6 @@ years <- unique(opg$year)
 
 datlist <- list()
 for (i in 2:length(years)){
-# for (i in 2:3){
     print(i)
     dat_y1 <- opg[opg$year==years[i - 1], ]
     dat_y2 <- opg[opg$year==years[i], ]
@@ -30,7 +29,7 @@ for (i in 2:length(years)){
     firstpass <- do.call(rbind, lapply(split(dat_y12, dat_y12$persid), function(dat) dat[which.min(dat$oscore), ]))
     secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$oscore), ]))
 
-    out_y1 <- data.frame(dat_y1[, idvars], secondpass[match(dat_y1$persid, secondpass$persid), 8:ncol(secondpass)])
+    out_y1 <- data.frame(dat_y1[, ], secondpass[match(dat_y1$persid, secondpass$persid), 8:ncol(secondpass)])
 
     cat(years[i:(i - 1)], 'matched:')
     cat(round(sum(!is.na(out_y1$persid.1)) / length(out_y1$persid.1), 2))
@@ -67,28 +66,22 @@ for (row in 1:nrow(matchmat)){
     opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
 }
 
-# write.csv(matchdat[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
-# go over that, more stringently
-
 matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
-
 matchdat <- matchdat[order(-matchdat$len, matchdat$index), ]
-write.csv(matchdat[, c(idvars, 'index', 'len', 'wscore', 'oscore')],
-    'mtchseries.csv')
+# write.csv(matchdat[, c(idvars, 'index', 'len', 'wscore', 'oscore')],
+#     'mtchseries.csv')
 
-matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), c(idvars, 'index', 'oscore', 'wscore', 'mscore', 'len')]
-opg[opg$index==sample(opg$index, 1) & !is.na(opg$index), c('index', idvars)]
+matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), ]
+opg[opg$index==sample(opg$index, 1) & !is.na(opg$index), ]
 
-write.csv(opg[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
-write.csv(matchdat, '~/desktop/opg1828-1826.csv')
+# write.csv(opg[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
+# write.csv(matchdat, '~/desktop/opg1828-1826.csv')
 
-# panel index
+
+# --------- notes -------#
 # ties
-# incorporate nowife dummy
 # commonness of names
 # second stricter round after first pass
-
-# 
 
 # marriages and widowing
 # exact (highly certain) and only match of mname should always be linked
@@ -132,23 +125,6 @@ write.csv(matchdat, '~/desktop/opg1828-1826.csv')
 
 # firstpass <- dat_y12[paste0(dat_y12$index, dat_y12$score) %in% paste0(lowscores[, 1], lowscores[, 2]), ] # keeps all duplicated mins
 # but this misses out on some that have no score or something
-
-hist(nchar(opg$mfirst))
-hist(nchar(opg$mlast))
-
-rstring <- function(l=10){
-    paste0(sample(letters, size=l, replace=T), collapse='')
-}
-stringdist(rstring(), rstring(), method='jw')
-
-N <- 1e4
-fill <- numeric(N)
-for (i in 1:N){
-    x <- stringdist(rstring(), rstring(), method='jw')
-    fill[i] <- x
-}
-conv <- cumsum(fill) / 1:length(fill)
-plot(conv, type='l')
 
 # remaining improvements:
 
