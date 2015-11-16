@@ -3,153 +3,21 @@ setwd('~/downloads/data/opgaafrol/')
 options(stringsAsFactors=FALSE)
 library(stringdist)
 
-gregexprr <- function(pattern, string){
-    # return all string matches of a regular expression
-    # todo: check whether/how it work on multiple strings at once
-    rgx <- gregexpr(pattern, string)
-    out <- substring(string, rgx[[1]], rgx[[1]] + attr(rgx[[1]], 'match.length') - 1)
-    return(out)
-}
-
-initials <- function(strings){
-    intls <- gregexprr("^[A-z]|\\s[A-z]|[.][A-z]", strings)
-    intls <- gsub('[ .]', '', intls)
-    return(paste0(intls, collapse=''))
-}
-
-opg <- read.csv('fgvf15oct.csv')
-tra <- read.csv('matched.csv')
-dim(opg)
-
-opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
-opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
-opg$lastnamewomen <- gsub('\x83', 'e', opg$lastnamewomen)
-
-tools::showNonASCII(opg$lastnamemen)
-tools::showNonASCII(opg$firstnamemen)
-tools::showNonASCII(opg$lastnamewomen)
-tools::showNonASCII(opg$firstnamewomen)
-
-opg$mlast <- iconv(opg$lastnamemen, from='macroman', to='utf8')
-opg$mfirst <- iconv(opg$firstnamemen, from='macroman', to='utf8')
-opg$wlast <- iconv(opg$lastnamewomen, from='macroman', to='utf8')
-opg$wfirst <- iconv(opg$firstnamewomen, from='macroman', to='utf8')
-
-# rm 
-opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
-opg$mfirst[grep("[^A-Z .]", opg$mfirst)] <- 
-    sapply(opg$mfirst[grep("[^A-Z .]", opg$mfirst)], function(x)gregexprr(".*[^A-Z .]", x))
-opg$mfirst[grep("[^A-Z .]", opg$mfirst)] <- 
-    gsub("[^A-Z .]", "", opg$mfirst[grep("[^A-Z .]", opg$mfirst)])
-opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
-# get rid of spaces?
-
-opg[(grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast) 
-    & grepl("^ *$", opg$wfirst) & grepl("^ *$", opg$wlast)), ] 
-# set NA or drop?
-# NA in stringdistmatrix returns NA
-# strings <- c('johan', 'johann', NA, 'jimbo')
-# stringdistmatrix(strings, method='jw')
-
-opg[grep("^ *$", opg$mfirst), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
-opg[grep("^ *$", opg$mlast), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
-# settlerwomen should be one
-# they should be moved to the men-columns
-# opg[grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast), c('mlast', 'mfirst')] <- opg[grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast), c('wlast', 'wfirst')]
-
-# or would it be better to set them to NA
-# and then hope the match happens on the wife's name?
-
-opg[opg$mfirst=='X', c('mfirst', 'mlast')]
-opg$mfirst[opg$mfirst=='X'] <- NA
-# set to NA? or maybe some funky string is better?
-
-opg[grep("^ *$", opg$mfirst), c('mfirst', 'mlast')]
-opg$mfirst[grep("^ *$", opg$mfirst)] <- NA
-
-opg[opg$mlast=='X', c('mfirst', 'mlast', 'wfirst', 'wlast')]
-opg[grep("^ *$", opg$mlast), c('mfirst', 'mlast')]
-# X = illegible/faulty
-# '' = no name in original
-
-opg$minitials <- sapply(opg$mfirst, initials)
-opg$winitials <- sapply(opg$wfirst, initials)
-
-opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
+source('rolfunctions.r')
+source('roldata.r')
 
 # need to find (near) duplicated in each year 
-# tricky because you need to do all that stuff with wifepresent etc. again
 # j: would you say true duplicates are more likely to be close to each other?
 
-plot(tapply(opg$wifepresent, opg$year, function(x) sum(x)/length(x)), type='l')
-
 opg <- opg[order(-opg$year), ]
-rownames(opg) <- opg$persid <- 1:nrow(opg)
 years <- unique(opg$year)
 
-
-idvars <- c('mfirst', 'minitials', 'mlast', 
-        'wfirst', 'winitials', 'wlast',
-         'wifepresent', 'young', 'old', 'persid')
-# write.csv(opg[opg$year==1828, idvars[1:10]], '~/desktop/opg1828.csv', row.names=F)
-# write.csv(opg[opg$year==1826, idvars[1:10]], '~/desktop/opg1826.csv', row.names=F)
-
-datlist <- list()
 
 # for (year in data.frame(combn(years, 2))){
 #     cat(year[1], year[2], '\n\n')
 # }
 
-strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast'){
-    lastmat <- stringdistmatrix(dat_y1$mlast, dat_y2$mlast, method='jw', p=0.1, useNames=TRUE)
-    candidates <- apply(lastmat, 2, function(x) which(x < 0.15))
-    candidates[lapply(candidates, length)==0] <- NA
-    y1candidates <- unlist(candidates)
-    y2positions <- rep(1:length(candidates), lapply(candidates, length))
-    dat_y2$linkid[y2positions] <- y1candidates
-
-    dat_y12 <- data.frame(dat_y1[y1candidates, idvars], dat_y2[y2positions, idvars])
-
-    dat_y12$mtchs <- rep(sapply(candidates, length), lapply(candidates, length))
-    dat_y12$mtchs[is.na(y1candidates)] <- 0 # easier way?
-    dat_y12$mtchs <- dat_y12$mtchs / max(dat_y12$mtchs, na.rm=T)
-
-    return(dat_y12)
-}
-
-score <- function(dat_y12){
-    dat_y12$mlastdist <- stringdist(dat_y12$mlast, dat_y12$mlast.1, method='jw', p=0.1)
-    dat_y12$mfirstdist <- stringdist(dat_y12$mfirst, dat_y12$mfirst.1, method='jw', p=0.1)
-    dat_y12$minidist <- stringdist(dat_y12$minitials, dat_y12$minitials.1, method='jw', p=0.1)
-    dat_y12$wlastdist <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='jw', p=0.1)
-    dat_y12$wfirstdist <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='jw', p=0.1)
-    dat_y12$winidist <- stringdist(dat_y12$winitials, dat_y12$winitials.1, method='jw', p=0.1)
-
-    dat_y12$mlastsdx <- stringdist(dat_y12$mlast, dat_y12$mlast.1, method='soundex')
-    dat_y12$mfirstsdx <- stringdist(dat_y12$mfirst, dat_y12$mfirst.1, method='soundex')
-    dat_y12$wlastsdx <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='soundex')
-    dat_y12$wfirstsdx <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='soundex')
-
-    dat_y12$exactmtch <- dat_y12$mfirst==dat_y12$mfirst.1 & dat_y12$mlast==dat_y12$mlast.1
-
-    weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-                 winidist=1, wlastdist=5, wfirstdist=2.5,  
-                 mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
-                 mtchs=1)
-    mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-                 mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
-    wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
-                 wlastsdx=2, wfirstsdx=1)
-    dat_y12$score <- rowSums(t(t(dat_y12[names(weights)]) * weights)) / sum(weights)
-
-    dat_y12$mscore <- rowSums(t(t(dat_y12[names(mwgts)]) * mwgts)) / sum(mwgts)
-    dat_y12$wscore <- rowSums(t(t(dat_y12[names(wwgts)]) * wwgts)) / sum(wwgts)
-    dat_y12$oscore <- ifelse(dat_y12$wifepresent, (sum(mwgts) * dat_y12$mscore + sum(wwgts) * dat_y12$wscore) / (sum(mwgts) + sum(wwgts)), dat_y12$mscore)
-
-    return(dat_y12)
-}
-
-# make this a function somehow?
+datlist <- list()
 for (i in 2:length(years)){
 # for (i in 2:3){
     print(i)
@@ -202,7 +70,13 @@ for (row in 1:nrow(matchmat)){
 # write.csv(matchdat[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
 # go over that, more stringently
 
-matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), c(idvars, 'index', 'oscore', 'wscore', 'mscore')]
+matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
+
+matchdat <- matchdat[order(-matchdat$len, matchdat$index), ]
+write.csv(matchdat[, c(idvars, 'index', 'len', 'wscore', 'oscore')],
+    'mtchseries.csv')
+
+matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), c(idvars, 'index', 'oscore', 'wscore', 'mscore', 'len')]
 opg[opg$index==sample(opg$index, 1) & !is.na(opg$index), c('index', idvars)]
 
 write.csv(opg[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
