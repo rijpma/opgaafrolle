@@ -14,7 +14,13 @@ initials <- function(strings){
     intls <- gsub('[ .]', '', intls)
     return(paste0(intls, collapse=''))
 }
-
+modperf <- function(yhat, y){
+    tbl <- table(y, yhat)
+    tbl <- tbl / sum(tbl)
+    out <- matrix(c(tbl, tbl / sum(tbl)), nrow=1)
+    colnames(out) <-c('specn', 'fanen', 'fapon', 'sensn', 'specr', 'faner', 'fapor', 'sensr')
+    return(out)
+}
 glmperf <- function(cutoff, mod, y){
     yhat <- mod$fit > cutoff
     w <- which(y==1)
