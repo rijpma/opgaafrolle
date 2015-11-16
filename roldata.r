@@ -1,7 +1,11 @@
+library(data.table)
+
 tra <- read.csv('matched.csv')
 tra <- tra[1:608, ]
 
-opg <- read.csv('fgvf15oct.csv')
+opg <- fread('fgvf15oct.csv', sep=',', data.table=F)
+opg <- opg[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
+    "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen')]
 
 opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
 opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
@@ -43,11 +47,11 @@ opg[grep("^ *$", opg$mlast), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wi
 # and then hope the match happens on the wife's name?
 
 opg[opg$mfirst=='X', c('mfirst', 'mlast')]
-opg$mfirst[opg$mfirst=='X'] <- NA
-# set to NA? or maybe some funky string is better?
+# opg$mfirst[opg$mfirst=='X'] <- NA
+# set to NA? or maybe some random string is better?
 
 opg[grep("^ *$", opg$mfirst), c('mfirst', 'mlast')]
-opg$mfirst[grep("^ *$", opg$mfirst)] <- NA
+# opg$mfirst[grep("^ *$", opg$mfirst)] <- NA
 
 opg[opg$mlast=='X', c('mfirst', 'mlast', 'wfirst', 'wlast')]
 opg[grep("^ *$", opg$mlast), c('mfirst', 'mlast')]
@@ -58,3 +62,8 @@ opg$minitials <- sapply(opg$mfirst, initials)
 opg$winitials <- sapply(opg$wfirst, initials)
 
 opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
+
+rownames(opg) <- opg$persid <- 1:nrow(opg)
+
+# write.csv(opg[opg$year==1828, idvars[1:10]], '~/desktop/opg1828.csv', row.names=F)
+# write.csv(opg[opg$year==1826, idvars[1:10]], '~/desktop/opg1826.csv', row.names=F)
