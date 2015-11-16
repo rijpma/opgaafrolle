@@ -16,9 +16,11 @@ initials <- function(strings){
 }
 
 modperf <- function(yhat, y){
-    tbl <- table(y, yhat)
-    out <- matrix(c(tbl, tbl / sum(tbl)), nrow=1)
-    colnames(out) <-c('specn', 'fanen', 'fapon', 'sensn', 'specr', 'faner', 'fapor', 'sensr')
+    sens <- sum(y[yhat==y])
+    spec <- sum(!yhat[yhat==y])
+    fane <- sum(!yhat[yhat!=y])
+    fapo <- sum(yhat[yhat!=y])
+    out <- data.frame(spec, fane, fapo, sens)
     return(out)
 }
 
@@ -41,7 +43,7 @@ strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast', .
     y2positions <- rep(1:length(candidates), lapply(candidates, length))
     dat_y2$linkid[y2positions] <- y1candidates
 
-    dat_y12 <- data.frame(dat_y1[y1candidates, idvars], dat_y2[y2positions, idvars])
+    dat_y12 <- data.frame(dat_y1[y1candidates, ], dat_y2[y2positions, ])
 
     dat_y12$mtchs <- rep(sapply(candidates, length), lapply(candidates, length))
     dat_y12$mtchs[is.na(y1candidates)] <- 0 # easier way?
