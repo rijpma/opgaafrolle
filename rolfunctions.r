@@ -14,13 +14,14 @@ initials <- function(strings){
     intls <- gsub('[ .]', '', intls)
     return(paste0(intls, collapse=''))
 }
+
 modperf <- function(yhat, y){
     tbl <- table(y, yhat)
-    tbl <- tbl / sum(tbl)
     out <- matrix(c(tbl, tbl / sum(tbl)), nrow=1)
     colnames(out) <-c('specn', 'fanen', 'fapon', 'sensn', 'specr', 'faner', 'fapor', 'sensr')
     return(out)
 }
+
 glmperf <- function(cutoff, mod, y){
     yhat <- mod$fit > cutoff
     w <- which(y==1)
@@ -80,4 +81,26 @@ score <- function(dat_y12){
     dat_y12$oscore <- ifelse(dat_y12$wifepresent, (sum(mwgts) * dat_y12$mscore + sum(wwgts) * dat_y12$wscore) / (sum(mwgts) + sum(wwgts)), dat_y12$mscore)
 
     return(dat_y12)
+}
+
+closeindex <- function(stringvrbs, cutoff=0.1){
+    # return index of similar strings
+    # multiple string variables permitted, weighted equally
+    # cutoff bit arbitrary
+
+    stopifnot(class(stringvrbs)=='list')
+
+    N <- length(stringvrbs[[1]])
+    distmat <- matrix(0, nrow=N, ncol=N)
+    for (vrb in stringvrbs){
+        distmat <- distmat + stringdistmatrix(vrb, vrb, method='jw', p=0.1)
+    }
+    
+    candidates <- apply(distmat, 2, function(x) which(x < cutoff))
+    out <- 1:N
+    for (i in seq_along(candidates)){
+        out[candidates[[i]][candidates[[i]] > i]] <- i
+    }
+
+    return(out)
 }
