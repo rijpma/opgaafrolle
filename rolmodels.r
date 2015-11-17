@@ -66,14 +66,14 @@ for (i in cuts){
 
 fillr <- fill / rowSums(fill)
 fill$cut <- fillr$cut <- cuts
-plot(fapo ~ cut, data=fillr, type='l')
-lines(fane ~ cut, data=fillr, col=2)
-plot(spec ~ cut, data=fillr, type='l', ylim=c(0, 1))
-lines(sens ~ cut, data=fillr, col=2)
-plot(spec ~ cut, data=fill, type='l')
-plot(sens ~ cut, data=fill, type='l')
-dst <- sqrt((fillr$sens - 1)^2 + (fillr$spec - 1)^2)
-plot(cuts, dst, type='l')
+# plot(fapo ~ cut, data=fillr, type='l')
+# lines(fane ~ cut, data=fillr, col=2)
+# plot(spec ~ cut, data=fillr, type='l', ylim=c(0, 1))
+# lines(sens ~ cut, data=fillr, col=2)
+# plot(spec ~ cut, data=fill, type='l')
+# plot(sens ~ cut, data=fill, type='l')
+# dst <- sqrt((fillr$sens - 1)^2 + (fillr$spec - 1)^2)
+# plot(cuts, dst, type='l')
 cutoff <- cuts[which.min(fill[,3])]
 table(trn$correct, pred_lgt_trn > 0.7)
 
@@ -90,11 +90,18 @@ table(trn$correct, pred_svm_trn)
 
 m_rf <- randomForest(as.factor(correct) ~ ., data=trn)
 summary(m_rf)
-varImpPlot(m_rf)
 pred_rf_trn <- predict(m_rf, newdata=trn)
 table(trn$correct, pred_rf_trn)
 pred_rf_vld <- predict(m_rf, newdata=vld)
 table(vld$correct, pred_rf_vld)
+
+m_rf_yeswf <- randomForest(as.factor(correct) ~ ., data=trn[trn$wifepresent, ])
+m_rf_nowf <- randomForest(as.factor(correct) ~ ., data=trn[!trn$wifepresent, ])
+
+table(predict(m_rf_yeswf), trn$correct[trn$wifepresent])
+table(predict(m_rf_nowf), trn$correct[!trn$wifepresent])
+table(predict(m_rf_yeswf, newdata=vld[vld$wifepresent, ]), vld$correct[vld$wifepresent])
+table(predict(m_rf_nowf, newdata=vld[!vld$wifepresent, ]), vld$correct[!vld$wifepresent])
 
 m_nn <- nnet(as.factor(correct) ~ ., data=trn, size=2)
 summary(m_nn)
