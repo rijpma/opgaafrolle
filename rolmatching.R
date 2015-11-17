@@ -5,6 +5,7 @@ library(stringdist)
 
 source('rolfunctions.r')
 source('roldata.r')
+source('rolmodels.r')
 
 # need to find (near) duplicated in each year 
 # j: would you say true duplicates are more likely to be close to each other?
@@ -26,8 +27,17 @@ for (i in 2:length(years)){
     dat_y12 <- strdistcombine(dat_y1, dat_y2)
     dat_y12 <- score(dat_y12)
 
-    firstpass <- do.call(rbind, lapply(split(dat_y12, dat_y12$persid), function(dat) dat[which.min(dat$oscore), ]))
-    secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$oscore), ]))
+    dat_y12$mlpred <- predict(m_rf, newdata=dat_y12, type='response')
+    votes <- predict(m_rf, newdata=dat_y12, type='prob')
+    dat_y12$mlscore <- apply(votes, 1, max)
+
+    dat_y12_mtchd <- dat_y12[dat_y12$mlpred=="TRUE", ]
+
+    firstpass <- do.call(rbind, lapply(split(dat_y12_mtchd, dat_y12_mtchd$persid), function(dat) dat[which.min(dat$mlscore), ]))
+    secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$mlscore), ]))
+
+    # firstpass <- do.call(rbind, lapply(split(dat_y12, dat_y12$persid), function(dat) dat[which.min(dat$oscore), ]))
+    # secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$oscore), ]))
 
     out_y1 <- data.frame(dat_y1[, ], secondpass[match(dat_y1$persid, secondpass$persid), 8:ncol(secondpass)])
 
@@ -53,7 +63,7 @@ data.frame(rev(tb[, 1]), cumsum(rev(tb[, 2])))
 sum(as.numeric(tb[,1]) * tb[,2])
 dim(opg)
 pdf('matchlengths.pdf')
-hist(rowSums(!is.na(matchmat)), breaks=length(years) - 1)
+hist(rowSums(!is.na(matchmat)), breaks=23)
 dev.off()
 
 matchdat <- do.call(rbind, datlist) # tweak a little to end up with the complete original dataset + matches
@@ -68,8 +78,11 @@ for (row in 1:nrow(matchmat)){
 
 matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
 matchdat <- matchdat[order(-matchdat$len, matchdat$index), ]
-# write.csv(matchdat[, c(idvars, 'index', 'len', 'wscore', 'oscore')],
-#     'mtchseries.csv')
+write.csv(matchdat[, c('index', 'persid', 
+                       'mfirst', 'minitials', 'mlast',
+                       'wfirst', 'winitials', 'wlast',
+                       'wifepresent', 'old', 'young',
+                       'mlpred', 'mlscore', 'oscore')], 'mtchseries.csv')
 
 matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), ]
 opg[opg$index==sample(opg$index, 1) & !is.na(opg$index), ]
