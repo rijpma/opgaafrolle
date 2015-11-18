@@ -57,6 +57,7 @@ for (i in 3:length(datlist)){
     matchmat <- merge(matchmat, datlist[[i]][, c('persid', 'persid.1')], by.x=paste0('persid', max(rks)), by.y='persid', all=T)    
 }
 
+# cumulative matchlengths
 tb <- data.frame(table(rowSums(!is.na(matchmat))))
 data.frame(rev(tb[, 1]), cumsum(rev(tb[, 2])))
 
@@ -76,16 +77,22 @@ for (row in 1:nrow(matchmat)){
     opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
 }
 
+smplseries(matchdat, matchdat$index)
+
+# order dataset by series with worst vote
 matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
-matchdat <- matchdat[order(-matchdat$len, matchdat$index), ]
-write.csv(matchdat[, c('index', 'persid', 
+matchdat$worstvote <- tapply(matchdat$mlscore, matchdat$index, min, na.rm=T)[matchdat$index]
+matchdat$worstvote[matchdat$len==1] <- 1.1
+matchdat <- matchdat[order(matchdat$worstvote, matchdat$len, matchdat$index), ]
+
+table(matchdat$len)
+
+write.csv(matchdat[, c('index', 'persid', 'len',
                        'mfirst', 'minitials', 'mlast',
                        'wfirst', 'winitials', 'wlast',
                        'wifepresent', 'old', 'young',
-                       'mlpred', 'mlscore', 'oscore')], 'mtchseries.csv')
+                       'mlpred', 'mlscore', 'worstvote')], 'mtchseries.csv')
 
-matchdat[matchdat$index==sample(matchdat$index, 1) & !is.na(matchdat$index), ]
-opg[opg$index==sample(opg$index, 1) & !is.na(opg$index), ]
 
 # write.csv(opg[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
 # write.csv(matchdat, '~/desktop/opg1828-1826.csv')
