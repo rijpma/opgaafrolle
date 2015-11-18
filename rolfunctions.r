@@ -106,3 +106,13 @@ closeindex <- function(stringvrbs, cutoff=0.1){
 
     return(out)
 }
+
+smplseries <- function(dat, index, len=NULL){
+    if (is.null(len)){
+        len <- sample(1:max(dat$len, na.rm=T), 1)
+    }
+    dat[index==sample(index[dat$len %in% len], 1) & !is.na(index), 
+        c('index', 'len', 'mlscore',
+          'mfirst', 'minitials', 'mlast',
+          'wfirst', 'winitials', 'wlast')]
+}
