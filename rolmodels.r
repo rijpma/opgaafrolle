@@ -1,12 +1,13 @@
 setwd('~/downloads/data/opgaafrol/')
 
-source('rolfunctions.r')
-source('roldata.r')
-
 library(stringdist)
 library(e1071)
 library(nnet)
 library(randomForest)
+
+source('rolfunctions.r')
+source('roldata.r')
+
 
 opg28 <- opg[opg$year==1828 & grepl("^[A-L]", opg$mlast), ]
 opg26 <- opg[opg$year==1826 & grepl("^[A-L]", opg$mlast), ]
@@ -44,7 +45,8 @@ sens <- sum(man$manual, na.rm=T)
 bsl <- matrix(c(spec, fane, fapo, sens), ncol=2)
 # many false positives!
 
-trn <- trn[, grep('correct|dist|sdx|wife|mtchs|old|young', names(trn))]
+trn <- trn[, grep('correct|dist|sdx|wife|mtchs|old|young|samedistrict|namefreq', 
+    names(trn))]
 apply(trn, 2, range)
 
 m_lgt <- glm(correct ~ mlastdist + mfirstdist + minidist
@@ -76,6 +78,7 @@ fill$cut <- fillr$cut <- cuts
 # plot(cuts, dst, type='l')
 cutoff <- cuts[which.min(fill[,3])]
 table(trn$correct, pred_lgt_trn > 0.7)
+# check if fp get low probabilities
 
 pred_lgt_vld <- predict(m_lgt, newdata=vld, type='response')
 table(trn$correct, pred_lgt_trn > 0.7)
@@ -88,8 +91,20 @@ table(trn$correct, pred_svm_trn)
 # pred_svm_vld <- predict(m_svm, newdata=vld)
 # table(vld$correct, pred_svm_vld)
 
+# tuneRF(trn[, -8], as.factor(trn$correct), type='classification', stepFactor=1.5)
+# 4
+# tune this!
+# vrbs to add: region, some neighbour thing from hhid
+# old/young not necessarily close
+# vines > 0
+# surname commonness =/ near duplicates
+# wife surname change to husband's wife surnm equals husbsurnmn
+# what's the vote on the false positives and false negatives? 0.4-0.6?
+# not only wifepresent, but wifepresent == wifepresent.1
+
 m_rf <- randomForest(as.factor(correct) ~ ., data=trn)
 summary(m_rf)
+varImpPlot(m_rf)
 pred_rf_trn <- predict(m_rf, newdata=trn)
 table(trn$correct, pred_rf_trn)
 pred_rf_vld <- predict(m_rf, newdata=vld)
@@ -102,6 +117,7 @@ table(predict(m_rf_yeswf), trn$correct[trn$wifepresent])
 table(predict(m_rf_nowf), trn$correct[!trn$wifepresent])
 table(predict(m_rf_yeswf, newdata=vld[vld$wifepresent, ]), vld$correct[vld$wifepresent])
 table(predict(m_rf_nowf, newdata=vld[!vld$wifepresent, ]), vld$correct[!vld$wifepresent])
+
 
 m_nn <- nnet(as.factor(correct) ~ ., data=trn, size=2)
 summary(m_nn)

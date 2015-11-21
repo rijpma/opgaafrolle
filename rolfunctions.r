@@ -65,6 +65,11 @@ score <- function(dat_y12){
     dat_y12$wlastsdx <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='soundex')
     dat_y12$wfirstsdx <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='soundex')
 
+    dat_y12$nrdist <- dat_y12$nr - dat_y12$nr.1
+    dat_y12$wifeinboth <- dat_y12$wifepresent == dat_y12$wifepresent.1
+    dat_y12$samedistrict <- dat_y12$districtall == dat_y12$districtall.1
+    # stay open
+
     dat_y12$exactmtch <- dat_y12$mfirst==dat_y12$mfirst.1 & dat_y12$mlast==dat_y12$mlast.1
 
     weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
@@ -115,4 +120,25 @@ smplseries <- function(dat, index, len=NULL){
         c('index', 'len', 'mlscore',
           'mfirst', 'minitials', 'mlast',
           'wfirst', 'winitials', 'wlast')]
+}
+
+uniformise_string <- function(string, maxdist=0.2, quiet=FALSE){
+    str_srtd <- names(sort(-table(string)))
+    n_start <- length(str_srtd)
+    strmat <- stringdistmatrix(str_srtd, str_srtd, method='jw', p=0.1)
+    fill <- NULL
+    while(nrow(strmat) > 0){
+        ind <- strmat[1, ] < maxdist
+        similar_strs <- str_srtd[ind]
+        str_srtd <- str_srtd[!ind]
+        strmat <- strmat[!ind, !ind, drop=FALSE]
+        string[string %in% similar_strs] <- similar_strs[1]
+        if (length(similar_strs) > 1 & !quiet){
+            cat(similar_strs, sep=', ')
+            cat('----->')
+            cat(similar_strs[1], '\n')
+        }
+    }
+    cat('From', n_start, ' to ', length(unique(string)), '\n')
+    return(string)
 }

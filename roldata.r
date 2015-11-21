@@ -5,7 +5,8 @@ tra <- tra[1:608, ]
 
 opg <- fread('fgvf15oct.csv', sep=',', data.table=F)
 opg <- opg[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
-    "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen')]
+    "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen',
+    'vines', 'districtdum')]
 
 opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
 opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
@@ -62,6 +63,14 @@ opg$minitials <- sapply(opg$mfirst, initials)
 opg$winitials <- sapply(opg$wfirst, initials)
 
 opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
+
+opg$spousenamedist <- stringdist(opg$mlast, opg$wlast, method='jw', p=0.1)
+opg$wineproducer <- as.numeric(opg$vines) > 0 & !is.na(opg$vines) # j: is NA likely 0 here?
+opg$districtall <- ifelse(opg$districtdum=='.', -1, as.numeric(opg$districtdum))
+
+unifnames <- uniformise_string(opg$mlast, maxdist=0.1, quiet=T)
+opg$namefreq <- c(table(unifnames)[unifnames])
+# or should this be done for each year separately?
 
 rownames(opg) <- opg$persid <- 1:nrow(opg)
 
