@@ -24,6 +24,9 @@ x <- score(x)
 
 x$mlastdist <- x$mlastdist / max(x$mlastdist)
 x$mtchs <- x$mtchs / max(x$mlastdist)
+x$namefreq <- x$namefreq / max(x$namefreq, na.rm=T)
+x$namefreq.1 <- x$namefreq.1 / max(x$namefreq.1, na.rm=T)
+x$nrdist <- abs(x$nrdist) / max(abs(x$nrdist), na.rm=T)
 
 set.seed(2718)
 smpl <- rbinom(nrow(x), 1, p=0.5)
@@ -45,7 +48,7 @@ sens <- sum(man$manual, na.rm=T)
 bsl <- matrix(c(spec, fane, fapo, sens), ncol=2)
 # many false positives!
 
-trn <- trn[, grep('correct|dist|sdx|wife|mtchs|old|young|samedistrict|namefreq', 
+trn <- trn[, grep('correct|dist$|sdx|wife|mtchs|old|young|samedistrict|namefreq|bothwine', 
     names(trn))]
 apply(trn, 2, range)
 
@@ -93,23 +96,32 @@ table(trn$correct, pred_svm_trn)
 
 # tuneRF(trn[, -8], as.factor(trn$correct), type='classification', stepFactor=1.5)
 # 4
-# tune this!
 # vrbs to add: region, some neighbour thing from hhid
 # old/young not necessarily close
-# vines > 0
-# surname commonness =/ near duplicates
 # wife surname change to husband's wife surnm equals husbsurnmn
 # what's the vote on the false positives and false negatives? 0.4-0.6?
-# not only wifepresent, but wifepresent == wifepresent.1
 
 m_rf <- randomForest(as.factor(correct) ~ ., data=trn)
 summary(m_rf)
-varImpPlot(m_rf)
+# varImpPlot(m_rf)
 pred_rf_trn <- predict(m_rf, newdata=trn)
 table(trn$correct, pred_rf_trn)
 pred_rf_vld <- predict(m_rf, newdata=vld)
 table(vld$correct, pred_rf_vld)
 
+M <- 25
+testerr <- ooberr <- double(M)
+for (i in 1:M){
+    fit <- randomForest(as.factor(correct) ~ ., data=trn, mtry=i)
+    ooberr[i] <- fit$err.rate[500]
+    pred <- predict(fit, newdata=vld)
+    testerr[i] <- sum(vld$correct==pred) / length(pred)
+    cat(i, '\n')
+}
+matplot(1:M, cbind(ooberr, testerr), type='b', pch=1, lty=1, col=1:2)
+legend('topright', legend=c('OutoBag', 'Validation'), fill=1:2, )
+
+# do nowife on entire data with wife set to ''?
 m_rf_yeswf <- randomForest(as.factor(correct) ~ ., data=trn[trn$wifepresent, ])
 m_rf_nowf <- randomForest(as.factor(correct) ~ ., data=trn[!trn$wifepresent, ])
 

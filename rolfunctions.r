@@ -68,6 +68,7 @@ score <- function(dat_y12){
     dat_y12$nrdist <- dat_y12$nr - dat_y12$nr.1
     dat_y12$wifeinboth <- dat_y12$wifepresent == dat_y12$wifepresent.1
     dat_y12$samedistrict <- dat_y12$districtall == dat_y12$districtall.1
+    dat_y12$bothwineprod <- dat_y12$wineproducer == dat_y12$wineproducer.1
     # stay open
 
     dat_y12$exactmtch <- dat_y12$mfirst==dat_y12$mfirst.1 & dat_y12$mlast==dat_y12$mlast.1
