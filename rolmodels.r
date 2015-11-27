@@ -8,7 +8,6 @@ library(randomForest)
 source('rolfunctions.r')
 source('roldata.r')
 
-
 opg28 <- opg[opg$year==1828 & grepl("^[A-L]", opg$mlast), ]
 opg26 <- opg[opg$year==1826 & grepl("^[A-L]", opg$mlast), ]
 
@@ -94,32 +93,46 @@ table(trn$correct, pred_svm_trn)
 # pred_svm_vld <- predict(m_svm, newdata=vld)
 # table(vld$correct, pred_svm_vld)
 
-# tuneRF(trn[, -8], as.factor(trn$correct), type='classification', stepFactor=1.5)
-# 4
 # vrbs to add: region, some neighbour thing from hhid
 # old/young not necessarily close
 # wife surname change to husband's wife surnm equals husbsurnmn
-# what's the vote on the false positives and false negatives? 0.4-0.6?
-
-m_rf <- randomForest(as.factor(correct) ~ ., data=trn)
-summary(m_rf)
-# varImpPlot(m_rf)
-pred_rf_trn <- predict(m_rf, newdata=trn)
-table(trn$correct, pred_rf_trn)
-pred_rf_vld <- predict(m_rf, newdata=vld)
-table(vld$correct, pred_rf_vld)
 
 M <- 25
 testerr <- ooberr <- double(M)
 for (i in 1:M){
     fit <- randomForest(as.factor(correct) ~ ., data=trn, mtry=i)
-    ooberr[i] <- fit$err.rate[500]
+    ooberr[i] <- fit$err.rate[500, 1]
     pred <- predict(fit, newdata=vld)
-    testerr[i] <- sum(vld$correct==pred) / length(pred)
+    testerr[i] <- 1 - sum(vld$correct==pred) / length(pred)
     cat(i, '\n')
 }
 matplot(1:M, cbind(ooberr, testerr), type='b', pch=1, lty=1, col=1:2)
 legend('topright', legend=c('OutoBag', 'Validation'), fill=1:2, )
+# suggests 3/4 for training, 5 for validation
+
+m_rf <- randomForest(as.factor(correct) ~ ., data=trn, mty=5)
+summary(m_rf)
+varImpPlot(m_rf)
+pred_rf_trn <- predict(m_rf, newdata=trn)
+table(trn$correct, pred_rf_trn)
+pred_rf_vld <- predict(m_rf, newdata=vld)
+table(vld$correct, pred_rf_vld)
+
+# find vote optimum
+votes_vld <- predict(m_rf, newdata=vld, type='prob')
+voteshares <- seq(0.1, 0.9, by=0.01)
+fill <- NULL
+for (share in voteshares){
+    fill <- rbind(fill, c(table(vld$correct, votes_vld[, 2] > share)))
+}
+colnames(fill) <- c('ff', 'falseneg', 'falspos', 'tt')
+fill <- fill / sum(vld$correct)
+matplot(voteshares, fill[, 2:3], lty=1, type='l', col=1)
+abline(v=0.5, col='gray', lty=2)
+text(x=voteshares[10], y=fill[5, 2:3] * 1.5, labels=c('falseneg', 'falsepos'))
+
+plot(sqrt(fill[,2]^2 + fill[,3]^2), type='l')
+
 
 # do nowife on entire data with wife set to ''?
 m_rf_yeswf <- randomForest(as.factor(correct) ~ ., data=trn[trn$wifepresent, ])
