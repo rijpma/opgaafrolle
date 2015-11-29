@@ -118,7 +118,7 @@ smplseries <- function(dat, index, len=NULL){
         len <- sample(1:max(dat$len, na.rm=T), 1)
     }
     dat[index==sample(index[dat$len %in% len], 1) & !is.na(index), 
-        c('index', 'len', 'mlscore',
+        c('index', 'len', 'mscore',
           'mfirst', 'minitials', 'mlast',
           'wfirst', 'winitials', 'wlast')]
 }
