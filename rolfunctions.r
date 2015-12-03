@@ -114,13 +114,11 @@ closeindex <- function(stringvrbs, cutoff=0.1){
 }
 
 smplseries <- function(dat, index, len=NULL){
+    lengths <- tapply(index, index, length)[index]
     if (is.null(len)){
-        len <- sample(1:max(dat$len, na.rm=T), 1)
+        len <- sample(1:max(lengths, na.rm=T), 1)
     }
-    dat[index==sample(index[dat$len %in% len], 1) & !is.na(index), 
-        c('index', 'len', 'mscore',
-          'mfirst', 'minitials', 'mlast',
-          'wfirst', 'winitials', 'wlast')]
+    dat[index==sample(index[dat$len %in% len], 1) & !is.na(index), ]
 }
 
 uniformise_string <- function(string, maxdist=0.2, quiet=FALSE){
