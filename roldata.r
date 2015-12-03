@@ -3,8 +3,8 @@ library(data.table)
 tra <- read.csv('matched.csv')
 tra <- tra[1:608, ]
 
-opg <- fread('fgvf15oct.csv', sep=',', data.table=F)
-opg <- opg[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
+opg_full <- fread('fgvf15oct.csv', sep=',', data.table=F)
+opg <- opg_full[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
     "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen',
     'vines', 'districtdum')]
 
