@@ -1,8 +1,8 @@
 rm(list=ls())
-setwd('~/downloads/data/opgaafrol/')
+setwd('~/dropbox/opgaafrol/')
 options(stringsAsFactors=FALSE)
-library(stringdist)
 
+library(stringdist)
 source('rolfunctions.r')
 source('roldata.r')
 source('rolmodels.r')
@@ -25,7 +25,7 @@ for (i in 2:length(years)){
     votes <- predict(m_rf, newdata=dat_y12, type='prob')
     dat_y12$mscore <- votes[, 2]
 
-    dat_y12_mtchd <- dat_y12[dat_y12$mlvotes > 0.5, ]
+    dat_y12_mtchd <- dat_y12[dat_y12$mscore > 0.5, ]
 
     firstpass <- do.call(rbind, lapply(split(dat_y12_mtchd, dat_y12_mtchd$persid), function(dat) dat[which.min(dat$mscore), ]))
     secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$mscore), ]))
@@ -70,6 +70,16 @@ for (row in 1:nrow(matchmat)){
     matchdat$index[matchdat$persid %in% na.omit(matchmat[row, ])] <- row
     opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
 }
+opg$len <- tapply(opg$index, opg$index, length)[opg$index]
+
+smplseries(opg, opg$index)[, grep('last|first', names(opg))]
+
+out <- cbind(opg_full, opg)
+out <- out[order(out$index, out$year), ]
+write.csv(out, 'opgaafrollen_lnkd.csv', row.names=F, na='.')
+# works, but what about those last matches?
+# they're in, score indeed
+tail(x)
 
 
 # order dataset by series with worst vote

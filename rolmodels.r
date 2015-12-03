@@ -1,4 +1,4 @@
-setwd('~/downloads/data/opgaafrol/')
+setwd('~/dropbox/opgaafrol/')
 
 library(stringdist)
 library(e1071)
@@ -47,7 +47,7 @@ sens <- sum(man$manual, na.rm=T)
 bsl <- matrix(c(spec, fane, fapo, sens), ncol=2)
 # many false positives!
 
-trn <- trn[, grep('correct|dist$|sdx|wife|mtchs|old|young|samedistrict|namefreq|bothwine', 
+trn <- trn[, grep('correct|dist$|sdx|wife|mtchs|old|young|samedistrict|namefreq', 
     names(trn))]
 apply(trn, 2, range)
 
@@ -70,14 +70,6 @@ for (i in cuts){
 
 fillr <- fill / rowSums(fill)
 fill$cut <- fillr$cut <- cuts
-# plot(fapo ~ cut, data=fillr, type='l')
-# lines(fane ~ cut, data=fillr, col=2)
-# plot(spec ~ cut, data=fillr, type='l', ylim=c(0, 1))
-# lines(sens ~ cut, data=fillr, col=2)
-# plot(spec ~ cut, data=fill, type='l')
-# plot(sens ~ cut, data=fill, type='l')
-# dst <- sqrt((fillr$sens - 1)^2 + (fillr$spec - 1)^2)
-# plot(cuts, dst, type='l')
 cutoff <- cuts[which.min(fill[,3])]
 table(trn$correct, pred_lgt_trn > 0.7)
 # check if fp get low probabilities
@@ -97,17 +89,17 @@ table(trn$correct, pred_svm_trn)
 # old/young not necessarily close
 # wife surname change to husband's wife surnm equals husbsurnmn
 
-M <- 25
-testerr <- ooberr <- double(M)
-for (i in 1:M){
-    fit <- randomForest(as.factor(correct) ~ ., data=trn, mtry=i)
-    ooberr[i] <- fit$err.rate[500, 1]
-    pred <- predict(fit, newdata=vld)
-    testerr[i] <- 1 - sum(vld$correct==pred) / length(pred)
-    cat(i, '\n')
-}
-matplot(1:M, cbind(ooberr, testerr), type='b', pch=1, lty=1, col=1:2)
-legend('topright', legend=c('OutoBag', 'Validation'), fill=1:2, )
+# M <- 25
+# testerr <- ooberr <- double(M)
+# for (i in 1:M){
+#     fit <- randomForest(as.factor(correct) ~ ., data=trn, mtry=i)
+#     ooberr[i] <- fit$err.rate[500, 1]
+#     pred <- predict(fit, newdata=vld)
+#     testerr[i] <- 1 - sum(vld$correct==pred) / length(pred)
+#     cat(i, '\n')
+# }
+# matplot(1:M, cbind(ooberr, testerr), type='b', pch=1, lty=1, col=1:2)
+# legend('topright', legend=c('OutoBag', 'Validation'), fill=1:2, )
 # suggests 3/4 for training, 5 for validation
 
 m_rf <- randomForest(as.factor(correct) ~ ., data=trn, mty=5)
@@ -143,10 +135,9 @@ table(predict(m_rf_nowf), trn$correct[!trn$wifepresent])
 table(predict(m_rf_yeswf, newdata=vld[vld$wifepresent, ]), vld$correct[vld$wifepresent])
 table(predict(m_rf_nowf, newdata=vld[!vld$wifepresent, ]), vld$correct[!vld$wifepresent])
 
-
-m_nn <- nnet(as.factor(correct) ~ ., data=trn, size=2)
-summary(m_nn)
-pred_nn_trn <- predict(m_nn, type='class', newdata=trn)
-table(trn$correct, pred_nn_trn)
-pred_nn_vld <- predict(m_nn, type='class', newdata=vld)
-table(vld$correct, pred_nn_vld)
+# m_nn <- nnet(as.factor(correct) ~ ., data=trn, size=2)
+# summary(m_nn)
+# pred_nn_trn <- predict(m_nn, type='class', newdata=trn)
+# table(trn$correct, pred_nn_trn)
+# pred_nn_vld <- predict(m_nn, type='class', newdata=vld)
+# table(vld$correct, pred_nn_vld)
