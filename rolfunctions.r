@@ -36,7 +36,7 @@ glmperf <- function(cutoff, mod, y){
 }
 
 strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast', ...){
-    lastmat <- stringdistmatrix(dat_y1$mlast, dat_y2$mlast, method='jw', p=0.1, useNames=TRUE, ...)
+    lastmat <- stringdistmatrix(dat_y1[[mtchvrb1]], dat_y2[[mtchvrb2]], method='jw', p=0.1, useNames=TRUE, ...)
     candidates <- apply(lastmat, 2, function(x) which(x < 0.15))
     candidates[lapply(candidates, length)==0] <- NA
     y1candidates <- unlist(candidates)
@@ -114,9 +114,9 @@ closeindex <- function(stringvrbs, cutoff=0.1){
 }
 
 smplseries <- function(dat, index, len=NULL){
-    lengths <- tapply(index, index, length)[index]
+    lens <- tapply(index, index, length)[index]
     if (is.null(len)){
-        len <- sample(1:max(lengths, na.rm=T), 1)
+        len <- sample(1:max(lens, na.rm=T), 1)
     }
     dat[index==sample(index[dat$len %in% len], 1) & !is.na(index), ]
 }
