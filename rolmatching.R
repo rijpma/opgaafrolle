@@ -2,6 +2,11 @@ rm(list=ls())
 setwd('~/dropbox/opgaafrol/')
 options(stringsAsFactors=FALSE)
 
+# can you match to the panel rather than the full dataset; is there any added benefit to that
+#     can we use the panel to infer age?
+# clean up recombining after loop
+# try to put a lot in functions so that others can use it
+
 library(stringdist)
 source('rolfunctions.r')
 source('roldata.r')
@@ -61,7 +66,7 @@ pdf('matchlengths.pdf')
 hist(rowSums(!is.na(matchmat)), breaks=23)
 dev.off()
 
-matchdat <- do.call(rbind, datlist) # tweak a little to end up with the complete original dataset + matches
+matchdat <- do.call(rbind, datlist)
 
 matchmat <- as.matrix(matchmat)
 matchdat$index <- NA
@@ -70,20 +75,26 @@ for (row in 1:nrow(matchmat)){
     matchdat$index[matchdat$persid %in% na.omit(matchmat[row, ])] <- row
     opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
 }
-opg$len <- tapply(opg$index, opg$index, length)[opg$index]
+matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
 
-smplseries(opg, opg$index)[, grep('last|first', names(opg))]
-
-out <- cbind(opg_full, opg)
+all.equal(opg$id, opg_full$id)
+out <- cbind(opg_full, opg[, c('mlast', 'index')])
+out <- cbind(out, matchdat[match(opg_full$id, matchdat$id), c('len', 'mscore', 'index')])
+names(out)[ncol(out)] <- 'checkindex'
 out <- out[order(out$index, out$year), ]
+smplseries(out, out$index)[, grep('last|first|index|len|score', names(out))]
 write.csv(out, 'opgaafrollen_lnkd.csv', row.names=F, na='.')
-# works, but what about those last matches?
-# they're in, score indeed
-tail(x)
 
+
+
+
+
+
+
+opg$len <- tapply(opg$index, opg$index, length)[opg$index]
+smplseries(opg, opg$index)
 
 # order dataset by series with worst vote
-matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
 matchdat$worstvote <- tapply(matchdat$mscore, matchdat$index, min, na.rm=T)[matchdat$index]
 matchdat$worstvote[matchdat$len==1] <- 1.1
 matchdat <- matchdat[order(matchdat$worstvote, matchdat$len, matchdat$index), ]
@@ -97,11 +108,6 @@ write.csv(matchdat[, c('index', 'persid', 'len',
                        'wfirst', 'winitials', 'wlast',
                        'wifepresent', 'old', 'young',
                        'mpred', 'mscore', 'worstvote')], 'mtchseries.csv')
-
-
-# write.csv(opg[, c(idvars, 'index')], 'mtchdopg.csv', row.names=F)
-# write.csv(matchdat, '~/desktop/opg1828-1826.csv')
-
 
 # --------- notes -------#
 # need to find (near) duplicated in each year 

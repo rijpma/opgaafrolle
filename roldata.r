@@ -26,6 +26,7 @@ opg$wfirst <- iconv(opg$firstnamewomen, from='macroman', to='utf8')
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)] <- 
     sapply(opg$mfirst[grep("[^A-Z .]", opg$mfirst)], function(x)gregexprr(".*[^A-Z .]", x))
+    # or duplicate row?
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)] <- 
     gsub("[^A-Z .]", "", opg$mfirst[grep("[^A-Z .]", opg$mfirst)])
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
