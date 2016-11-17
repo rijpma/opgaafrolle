@@ -2,12 +2,8 @@ rm(list=ls())
 setwd('~/dropbox/opgaafrol/')
 options(stringsAsFactors=FALSE)
 
-# can you match to the panel rather than the full dataset; is there any added benefit to that
-#     can we use the panel to infer age?
-# clean up recombining after loop
-# try to put a lot in functions so that others can use it
+library("stringdist")
 
-library(stringdist)
 source('rolfunctions.r')
 source('roldata.r')
 source('rolmodels.r')
@@ -49,65 +45,71 @@ for (i in 2:length(years)){
 }
 
 matchmat <- merge(datlist[[1]][, c('persid', 'persid.1')], 
-    datlist[[2]][, c('persid', 'persid.1')], by.x='persid.1', by.y='persid', all=T)
+                  datlist[[2]][, c('persid', 'persid.1')], 
+                by.x='persid.1', by.y='persid', all=T)
 for (i in 3:length(datlist)){
     rks <- rank(sapply(matchmat, function(x) min(range(x, na.rm=T))))
     names(matchmat) <- paste0('persid', rks)
-    matchmat <- merge(matchmat, datlist[[i]][, c('persid', 'persid.1')], by.x=paste0('persid', max(rks)), by.y='persid', all=T)    
+    matchmat <- merge(matchmat, 
+        datlist[[i]][, c('persid', 'persid.1')], 
+        by.x=paste0('persid', max(rks)), by.y='persid', all=T)    
 }
 
-# cumulative matchlengths
-tb <- data.frame(table(rowSums(!is.na(matchmat))))
-data.frame(rev(tb[, 1]), cumsum(rev(tb[, 2])))
+x = apply(matchmat, 1, function(x) x[!is.na(x)])
+names(x) = 1:length(x)
+x = unlist(x)
+names(x) = gsub('\\..*', '', names(x))
+opg$index = names(x)[match(opg$persid, x)]
 
-sum(as.numeric(tb[,1]) * tb[,2])
-dim(opg)
-pdf('matchlengths.pdf')
-hist(rowSums(!is.na(matchmat)), breaks=23)
-dev.off()
+opg = as.data.table(opg)
+opg[index==sample(opg$index, 1), ]
 
-matchdat <- do.call(rbind, datlist)
+opg[, len:=length(persid[!is.na(index)]), by=index]
+hist(opg[, length(persid[!is.na(index)]), by=index][,V1])
 
-matchmat <- as.matrix(matchmat)
-matchdat$index <- NA
-opg$index <- NA
-for (row in 1:nrow(matchmat)){
-    matchdat$index[matchdat$persid %in% na.omit(matchmat[row, ])] <- row
-    opg$index[opg$persid %in% na.omit(matchmat[row, ])] <- row
+opg[, ti:=1:length(persid), by=index]
+opg[, first:=ti==1]
+opg[, last:=ti==max(ti) & ti!=1, by=index]
+opg[index==sample(index[len ==6], 1), ]
+
+
+lasts = opg[last==TRUE, ]
+firsts = opg[first==TRUE]
+x = strdistcombine(lasts, firsts)
+x = score(x)
+
+x$mpred <- predict(m_rf, newdata=x, type='response')
+votes <- predict(m_rf, newdata=x, type='prob')
+x$mscore <- votes[, 2]
+
+x_mtchd <- x[x$mscore > 0.5, ]
+x_mtchd <- x_mtchd[x_mtchd$year.1 - x_mtchd$year > 1, ]
+
+firstpass <- do.call(rbind, lapply(split(x_mtchd, x_mtchd$persid), function(dat) dat[which.min(dat$mscore), ]))
+secondpass <- do.call(rbind, lapply(split(firstpass, firstpass$persid.1), function(dat) dat[which.min(dat$mscore), ]))
+
+y = secondpass[secondpass$mscore > 0.7, ]
+opg$index2 = opg$index
+for (row in 1:nrow(y)){
+    persids = y[row, c('persid', 'persid.1')]
+    indices = opg$index[opg$persid %in% persids]
+    opg$index2[opg$index %in% indices] = indices[1]
 }
-matchdat$len <- tapply(matchdat$index, matchdat$index, length)[matchdat$index]
 
-all.equal(opg$id, opg_full$id)
-out <- cbind(opg_full, opg[, c('mlast', 'index')])
-out <- cbind(out, matchdat[match(opg_full$id, matchdat$id), c('len', 'mscore', 'index')])
-names(out)[ncol(out)] <- 'checkindex'
-out <- out[order(out$index, out$year), ]
-smplseries(out, out$index)[, grep('last|first|index|len|score', names(out))]
-write.csv(out, 'opgaafrollen_lnkd.csv', row.names=F, na='.')
+duplids = opg[, list(dupl=duplicated(year), index2), by=index2][dupl==T, index2]
+opg[index2 %in% duplids, index2:=index]
+opg[, len2:=length(persid[!is.na(index2)]), by=index2]
 
+outfile = gzfile("opg_doublelinked.csv.gz", 'w')
+write.csv(opg, outfile)
+close(outfile)
 
-
-
-
-
-
-opg$len <- tapply(opg$index, opg$index, length)[opg$index]
-smplseries(opg, opg$index)
-
-# order dataset by series with worst vote
-matchdat$worstvote <- tapply(matchdat$mscore, matchdat$index, min, na.rm=T)[matchdat$index]
-matchdat$worstvote[matchdat$len==1] <- 1.1
-matchdat <- matchdat[order(matchdat$worstvote, matchdat$len, matchdat$index), ]
-
-smplseries(matchdat, matchdat$index)
-
-table(matchdat$len)
-
-write.csv(matchdat[, c('index', 'persid', 'len',
-                       'mfirst', 'minitials', 'mlast',
-                       'wfirst', 'winitials', 'wlast',
-                       'wifepresent', 'old', 'young',
-                       'mpred', 'mscore', 'worstvote')], 'mtchseries.csv')
+par(mfrow=c(1, 1))
+plot(cumsum(opg[len2 > 1, length(persid), by=len2][order(len2), V1]),
+    type='l', log='y', bty='l', ylab='obs.', xlab='series length', 
+    main='N. obs in series of at least length x')
+lines(cumsum(opg[len > 1, length(persid), by=len][order(len), V1]), col=2)
+legend('bottomright', legend=c('linked', '2x linked'), fill=c(2, 1))
 
 # --------- notes -------#
 # need to find (near) duplicated in each year 
