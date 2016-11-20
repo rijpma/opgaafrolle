@@ -1,4 +1,9 @@
-library(data.table)
+setwd("~/dropbox/opgaafrol")
+
+source("rolfunctions.r")
+
+library("data.table")
+library("stringdist")
 
 tra <- read.csv('matched.csv')
 tra <- tra[1:608, ]
@@ -37,7 +42,7 @@ opg[(grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast)
 # set NA or drop?
 # NA in stringdistmatrix returns NA
 # strings <- c('johan', 'johann', NA, 'jimbo')
-# stringdistmatrix(strings, method='jw')
+# stringdist::stringdistmatrix(strings, method='jw')
 
 opg[grep("^ *$", opg$mfirst), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
 opg[grep("^ *$", opg$mlast), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
@@ -65,7 +70,7 @@ opg$winitials <- sapply(opg$wfirst, initials)
 
 opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
 
-opg$spousenamedist <- stringdist(opg$mlast, opg$wlast, method='jw', p=0.1)
+opg$spousenamedist <- stringdist::stringdist(opg$mlast, opg$wlast, method='jw', p=0.1)
 opg$wineproducer <- as.numeric(opg$vines) > 0 & !is.na(opg$vines) # j: is NA likely 0 here?
 opg$districtall <- ifelse(opg$districtdum=='.', -1, as.numeric(opg$districtdum))
 
@@ -74,6 +79,11 @@ opg$namefreq <- c(table(unifnames)[unifnames])
 # or should this be done for each year separately?
 
 rownames(opg) <- opg$persid <- 1:nrow(opg)
+
+outfile = gzfile("opg_cleaned.csv", 'w')
+write.csv(opg, outfile)
+close(outfile)
+
 
 # write.csv(opg[opg$year==1828, idvars[1:10]], '~/desktop/opg1828.csv', row.names=F)
 # write.csv(opg[opg$year==1826, idvars[1:10]], '~/desktop/opg1826.csv', row.names=F)
