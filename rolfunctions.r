@@ -1,3 +1,79 @@
+score = function(dat){
+    stopifnot(data.table::is.data.table(dat))
+
+    dat[, mlastdist := stringdist(mlast_from, mlast_to, method='jw', p=0.1)]
+    dat[, mfirstdist := stringdist(mfirst_from, mfirst_to, method='jw', p=0.1)]
+    dat[, minidist := stringdist(minitials_from, minitials_to, method='jw', p=0.1)]
+    dat[, wlastdist := stringdist(wlast_from, wlast_to, method='jw', p=0.1)]
+    dat[, wfirstdist := stringdist(wfirst_from, wfirst_to, method='jw', p=0.1)]
+    dat[, winidist := stringdist(winitials_from, winitials_to, method='jw', p=0.1)]
+
+    # somewhat expensive and hardly used
+    dat[, mlastsdx := stringdist(mlast_from, mlast_to, method='soundex')]
+    dat[, mfirstsdx := stringdist(mfirst_from, mfirst_to, method='soundex')]
+    dat[, wlastsdx := stringdist(wlast_from, wlast_to, method='soundex')]
+    dat[, wfirstsdx := stringdist(wfirst_from, wfirst_to, method='soundex')]
+
+    dat[, nrdist := nr_from - nr_to]
+    dat[, wifeinboth := wifepresent_from == wifepresent_to]
+    dat[, samedistrict := districtall_from == districtall_to]
+    dat[, bothwineprod := wineproducer_from == wineproducer_to]
+    # stay open
+
+    dat[, mtchs := length(year_from), by=persid_from]
+
+    dat[, exactmtch := mfirst_from==mfirst_to & mlast_from==mlast_to]
+
+    # weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
+    #              winidist=1, wlastdist=5, wfirstdist=2.5,  
+    #              mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
+    #              mtchs=1)
+    # mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
+    #              mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
+    # wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
+    #              wlastsdx=2, wfirstsdx=1)
+
+    # dat[, score:= rowSums(.SD * weights) / sum(weights), .SDcols=names(weights)]
+    # dat[, score:= rowSums(.SD * mwgts) / sum(mwgts), .SDcols=names(mwgts)]
+    # dat[, score:= rowSums(.SD * wwgts) / sum(wwgts), .SDcols=names(wwgts)]
+
+    return(dat)
+}
+
+
+candidates = function(dat, baseyear){
+    stopifnot(data.table::is.data.table(dat))
+
+    dat_firstyear = dat[year==baseyear, ]
+    dat_rest      = dat[year < baseyear, ]
+
+    stopifnot(nrow(dat_firstyear) > 0)
+    stopifnot(nrow(dat_rest) > 0)
+
+    distmat <- stringdist::stringdistmatrix(dat_firstyear$mlast, dat_rest$mlast, 
+        method='jw', p=0.1)
+
+    candidate_list = apply(distmat, 1, function(x) which(x < 0.15))
+    # names(candidate_list) = dat_firstyear$persid
+
+    # distmat[725, ]
+    # dat_rest[candidate_list[[725]], list(persid, mlast)][persid %in% c(5608, 4103), ]
+
+    dat_tomerge = dat_rest[unlist(candidate_list), ]
+    dat_tomerge[, linked_to     := rep(dat_firstyear$persid, times=sapply(candidate_list, length))]
+    dat_firstyear[, linked_from := persid]
+
+    # dat_tomerge[linked_to==725, ][persid %in% c(5608, 4103), ]
+    # dat_firstyear[linked_from==725, ]
+
+    combined = merge(dat_firstyear, dat_tomerge, all=T, 
+        by.x='linked_from', by.y='linked_to', suffixes=c('_from', '_to'))
+
+    # combined[persid_from==725, ][persid_to %in% c(5608, 4103), ]
+
+    return(combined)
+}
+
 gregexprr <- function(pattern, string){
     # return all string matches of a regular expression
     # todo: check whether/how it work on multiple strings at once
@@ -48,45 +124,6 @@ strdistcombine <- function(dat_y1, dat_y2, mtchvrb1='mlast', mtchvrb2='mlast', .
     dat_y12$mtchs <- rep(sapply(candidates, length), lapply(candidates, length))
     dat_y12$mtchs[is.na(y1candidates)] <- 0 # easier way?
     dat_y12$mtchs <- dat_y12$mtchs / max(dat_y12$mtchs, na.rm=T)
-
-    return(dat_y12)
-}
-
-score <- function(dat_y12){
-    dat_y12$mlastdist <- stringdist(dat_y12$mlast, dat_y12$mlast.1, method='jw', p=0.1)
-    dat_y12$mfirstdist <- stringdist(dat_y12$mfirst, dat_y12$mfirst.1, method='jw', p=0.1)
-    dat_y12$minidist <- stringdist(dat_y12$minitials, dat_y12$minitials.1, method='jw', p=0.1)
-    dat_y12$wlastdist <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='jw', p=0.1)
-    dat_y12$wfirstdist <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='jw', p=0.1)
-    dat_y12$winidist <- stringdist(dat_y12$winitials, dat_y12$winitials.1, method='jw', p=0.1)
-
-    dat_y12$mlastsdx <- stringdist(dat_y12$mlast, dat_y12$mlast.1, method='soundex')
-    dat_y12$mfirstsdx <- stringdist(dat_y12$mfirst, dat_y12$mfirst.1, method='soundex')
-    dat_y12$wlastsdx <- stringdist(dat_y12$wlast, dat_y12$wlast.1, method='soundex')
-    dat_y12$wfirstsdx <- stringdist(dat_y12$wfirst, dat_y12$wfirst.1, method='soundex')
-
-    dat_y12$nrdist <- dat_y12$nr - dat_y12$nr.1
-    dat_y12$wifeinboth <- dat_y12$wifepresent == dat_y12$wifepresent.1
-    dat_y12$samedistrict <- dat_y12$districtall == dat_y12$districtall.1
-    dat_y12$bothwineprod <- dat_y12$wineproducer == dat_y12$wineproducer.1
-    # stay open
-
-    dat_y12$exactmtch <- dat_y12$mfirst==dat_y12$mfirst.1 & dat_y12$mlast==dat_y12$mlast.1
-
-    weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-                 winidist=1, wlastdist=5, wfirstdist=2.5,  
-                 mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
-                 mtchs=1)
-    mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-                 mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
-    wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
-                 wlastsdx=2, wfirstsdx=1)
-
-    dat_y12$score <- rowSums(t(t(dat_y12[names(weights)]) * weights)) / sum(weights)
-
-    dat_y12$mscore <- rowSums(t(t(dat_y12[names(mwgts)]) * mwgts)) / sum(mwgts)
-    dat_y12$wscore <- rowSums(t(t(dat_y12[names(wwgts)]) * wwgts)) / sum(wwgts)
-    dat_y12$oscore <- ifelse(dat_y12$wifepresent, (sum(mwgts) * dat_y12$mscore + sum(wwgts) * dat_y12$wscore) / (sum(mwgts) + sum(wwgts)), dat_y12$mscore)
 
     return(dat_y12)
 }
