@@ -5,8 +5,8 @@ source("rolfunctions.r")
 library("data.table")
 library("stringdist")
 
-tra <- read.csv('matched.csv')
-tra <- tra[1:608, ]
+# tra <- read.csv('matched.csv')
+# tra <- tra[1:608, ]
 
 opg_full <- fread('fgvf15oct.csv', sep=',', data.table=F)
 opg <- opg_full[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
@@ -80,7 +80,7 @@ opg$namefreq <- c(table(unifnames)[unifnames])
 
 rownames(opg) <- opg$persid <- 1:nrow(opg)
 
-outfile = gzfile("opg_cleaned.csv", 'w')
+outfile = gzfile("opg_cleaned.csv.gz", 'w')
 write.csv(opg, outfile)
 close(outfile)
 
