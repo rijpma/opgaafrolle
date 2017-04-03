@@ -1,4 +1,4 @@
-score = function(dat){
+score = function(dat, include_manual = FALSE){
     stopifnot(data.table::is.data.table(dat))
 
     dat[, mlastdist := stringdist(mlast_from, mlast_to, method='jw', p=0.1)]
@@ -24,28 +24,31 @@ score = function(dat){
 
     dat[, exactmtch := mfirst_from==mfirst_to & mlast_from==mlast_to]
 
-    # weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-    #              winidist=1, wlastdist=5, wfirstdist=2.5,  
-    #              mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
-    #              mtchs=1)
-    # mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
-    #              mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
-    # wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
-    #              wlastsdx=2, wfirstsdx=1)
+    if (include_manual){
+        weights <- c(mlastdist=10, mfirstdist=6, minidist=2, 
+                     winidist=1, wlastdist=5, wfirstdist=2.5,  
+                     mlastsdx=4, mfirstsdx=2, wlastsdx=2, wfirstsdx=1,
+                     mtchs=1)
+        mwgts <- c(mlastdist=10, mfirstdist=6, minidist=2, 
+                     mlastsdx=4, mfirstsdx=2) #, old=2, young=2)
+        wwgts <- c(winidist=1, wlastdist=5, wfirstdist=2.5,  
+                     wlastsdx=2, wfirstsdx=1)
 
-    # dat[, score:= rowSums(.SD * weights) / sum(weights), .SDcols=names(weights)]
-    # dat[, score:= rowSums(.SD * mwgts) / sum(mwgts), .SDcols=names(mwgts)]
-    # dat[, score:= rowSums(.SD * wwgts) / sum(wwgts), .SDcols=names(wwgts)]
+        dat[, score:= rowSums(.SD * weights) / sum(weights), .SDcols=names(weights)]
+        # dat[, score:= rowSums(.SD * mwgts) / sum(mwgts), .SDcols=names(mwgts)]
+        # dat[, score:= rowSums(.SD * wwgts) / sum(wwgts), .SDcols=names(wwgts)]
+    }
 
     return(dat)
 }
 
 
-candidates = function(dat, baseyear){
-    stopifnot(data.table::is.data.table(dat))
+candidates = function(dat_firstyear, dat_rest){
+    stopifnot(data.table::is.data.table(dat_firstyear))
+    stopifnot(data.table::is.data.table(dat_rest))
 
-    dat_firstyear = dat[year==baseyear, ]
-    dat_rest      = dat[year < baseyear, ]
+    # dat_firstyear = dat[year==baseyear, ]
+    # dat_rest      = dat[year < baseyear, ]
 
     stopifnot(nrow(dat_firstyear) > 0)
     stopifnot(nrow(dat_rest) > 0)
