@@ -116,37 +116,56 @@ opg[!is.na(index), len:=length(persid), by=index]
 
 # any multiple years in indices?
 opg[!is.na(index), ][, duplicated(year), by=index][V1==T, ]
+# impossible linking
+opg[len > 35, ]
+opg[len > 22, ]
 
 # test a few
 opg[len == 4, ][index %in% sample(index[!is.na(index)], 1), list(mfirst, mlast, wfirst, wlast, year, fromyear, len)]
+opg[len > 20, ][index %in% sample(index[!is.na(index)], 1), list(mfirst, mlast, wfirst, wlast, year, fromyear, len)]
+
+opg[len == 1 & year == 1828, ][index %in% sample(index[!is.na(index)], 2), list(mfirst, mlast, wfirst, wlast, year, old, young, index)]
+opg[len > 3, ][index %in% sample(index[!is.na(index)], 2), list(mfirst, mlast, wfirst, wlast, year, old, young, index)]
+out = opg[len > 3, ][index %in% sample(index[!is.na(index)], 2), list(mfirst, mlast, wfirst, wlast, year, old, young, index)]
+
+out = opg[index %in% c(1012, 1301, 1478, 1032), list(year, mfirst, mlast, wfirst, wlast, old, index)]
+out = out[, .SD[1:2], by=index][order(-year, mlast)]
+out = out[, lapply(.SD, as.character)]
+out = out[, lapply(.SD, tolower)]
+out[index == 1032 | is.na(year), ] = '...'
+out[, `...` := '...']
+print(xtable::xtable(out[, -"index"],
+        caption = "Example records from Graaff Reinet opgaafrollen"), 
+    include.rownames=F, size="footnotesize", 
+    file="examplerecords.tex")
 
 # any made from more than one year?
 opg[len > 1, length(unique(fromyear)), by=index][order(V1)]
 
 table(opg$len)
 obs_at_least_length = cumsum(rev(table(opg$len)))
-obs_at_least_length
 ind_at_least_length = obs_at_least_length / as.numeric(names(obs_at_least_length))
+obs_at_least_length
+ind_at_least_length
 
 dotchart(obs_at_least_length)
-dotchart(log(ind_at_least_length))
+
+pdf("cumulativelinks.pdf")
+plot(as.numeric(names(ind_at_least_length)), ind_at_least_length,
+    log='y', ylab='N series', xlab='Series length >=', type='b', col=2)
+dev.off()
+
 plot(ind_at_least_length,  -as.numeric(names(ind_at_least_length)), 
     log='x', yaxt='n', xlab='N series', ylab='Series length ≥')
 axis(side = 2, at = -(1:max(as.numeric(names(ind_at_least_length)))),
     labels = 1:max(as.numeric(names(ind_at_least_length))))
 abline(h=-c(1:33), lty=3, col='gray70')
 
-hist(opg[, length(persid), by=index][, V1], breaks=35)
-his = hist(opg[, length(persid), by=index][, V1], breaks=35)
-plot(his$count, log='y', type='h', lwd=10, lend=2)
-barplot(his$count, log='y', col='white')
-table(opg[, length(persid), by=index][, V1])
-
 opg[index==1, ]
 opg[index==3437, ]
 data.frame(opg[year==1787, ][order(mlast), list(mfirst, mlast)])
 
-outfile = gzfile("opg_doublelinked_17apr3.csv.gz", 'w')
+outfile = gzfile("opg_doublelinked_2017apr18.csv.gz", 'w')
 write.csv(opg, outfile)
 close(outfile)
 
