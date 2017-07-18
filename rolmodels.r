@@ -1,3 +1,5 @@
+rm(list=ls())
+
 setwd('~/dropbox/opgaafrol/')
 
 library("stringdist")
@@ -10,25 +12,21 @@ library("xtable")
 
 source('rolfunctions.r')
 
-opg = data.table::fread(input="zcat < opg_cleaned.csv.gz")
+# opg = data.table::fread(input="zcat < opg_cleaned.csv.gz")
+opg = data.table::fread("gunzip -c opg_cleaned.csv.gz", check.names = TRUE)
+tra = data.table::fread('matched.csv', check.names = TRUE)
+setnames(tra, c("persid", "V11"), c("persid_1828", "persid_1826"))
 
-tra = read.csv('matched.csv')
-# persid for 1828 and X for 1826
-
-dim(tra[!is.na(tra$persid) & !is.na(tra$X), ])
+dim(tra)
+dim(tra[!is.na(persid_1828) & !is.na(persid_1826), ])
+tra = tra[!is.na(persid_1828) & !is.na(persid_1826), ]
 
 opg28 = opg[year == 1828 & grepl("^[A-L]", mlast), ]
 opg26 = opg[year==1826 & grepl("^[A-L]", mlast), ]
-# opg26 = opg[year == 1826, ]
-
-opg28[, clsidx := closeindex(list(mlast, mfirst))]
-dplcts = opg28$clsidx[duplicated(opg28$clsidx)]
 
 x = candidates(opg28, opg26)
-# x = x[complete.cases(x), ]
 
-x[, correct := paste0(persid_from, persid_to) %in% paste0(tra$persid, tra$X)]
-sum(x$correct==TRUE)
+x[!is.na(persid_from) & !is.na(persid_to), correct := paste0(persid_from, persid_to) %in% paste0(tra$persid_1828, tra$persid_1826)]
 
 x = score(x, include_manual=T)
 
