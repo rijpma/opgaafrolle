@@ -24,18 +24,21 @@ tra = tra[!is.na(persid_1828) & !is.na(persid_1826), ]
 opg28 = opg[year == 1828 & grepl("^[A-L]", mlast), ]
 opg26 = opg[year==1826 & grepl("^[A-L]", mlast), ]
 
-x = candidates(opg28, opg26)
+cnd = candidates(opg28, opg26)
 
-x[!is.na(persid_from) & !is.na(persid_to), correct := paste0(persid_from, persid_to) %in% paste0(tra$persid_1828, tra$persid_1826)]
-nrow(tra) - sum(x$correct==TRUE, na.rm=T)
+cnd[!is.na(persid_from) & !is.na(persid_to), correct := paste0(persid_from, persid_to) %in% paste0(tra$persid_1828, tra$persid_1826)]
+nrow(tra) - sum(cnd$correct==TRUE, na.rm=T)
 # diff is persons matched but not identified as candidates or with wrong candidates
+cnd = cnd[!is.na(correct), ]
 
-x = score(x, include_manual=T)
+cnd = score(cnd, include_manual=T)
+
+
 
 set.seed(2718)
-smpl = rbinom(nrow(x), 1, p=0.5)
-trn = x[smpl==1, ]
-vld = x[smpl==0, ]
+smpl = rbinom(nrow(cnd), 1, p=0.5)
+trn = cnd[smpl==1, ]
+vld = cnd[smpl==0, ]
 
 # compare with manual method
 firstpass = do.call(rbind, lapply(split(trn, trn$persid_from), function(dat) dat[which.min(dat$score), ]))
@@ -45,8 +48,8 @@ secondpass$mtchid = paste0(secondpass$persid_from, secondpass$persid_to)
 trn$mtchid = paste0(trn$persid_from, trn$persid_to)
 man = data.frame(correct=trn[, correct], secondpass[match(trn$mtchid, secondpass$mtchid), 8:ncol(secondpass)])
 
-spec = sum(is.na(man$manual)[!man$correct])
-fane = sum(is.na(man$manual)[man$correct])
+spec = sum(is.na(man$manual)[!man$correct], na.rm=T)
+fane = sum(is.na(man$manual)[man$correct], na.rm=T)
 fapo = sum(!man$manual, na.rm=T) 
 sens = sum(man$manual, na.rm=T)
 bsl = matrix(c(spec, fane, fapo, sens), ncol=2)
