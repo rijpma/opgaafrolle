@@ -27,6 +27,8 @@ opg26 = opg[year==1826 & grepl("^[A-L]", mlast), ]
 x = candidates(opg28, opg26)
 
 x[!is.na(persid_from) & !is.na(persid_to), correct := paste0(persid_from, persid_to) %in% paste0(tra$persid_1828, tra$persid_1826)]
+nrow(tra) - sum(x$correct==TRUE, na.rm=T)
+# diff is persons matched but not identified as candidates or with wrong candidates
 
 x = score(x, include_manual=T)
 
