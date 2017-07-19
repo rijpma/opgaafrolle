@@ -1,3 +1,10 @@
+normalise <- function(x){
+    if (is.vector(x)){
+        (x - min(x, na.rm=T)) / (max(x, na.rm=T) - min(x, na.rm=T))
+    } else {
+        do.call(cbind, lapply(x, normalise))
+    }
+}
 score = function(dat, include_manual = FALSE){
     stopifnot(data.table::is.data.table(dat))
 
@@ -41,6 +48,7 @@ score = function(dat, include_manual = FALSE){
         # dat[, score:= rowSums(.SD * wwgts) / sum(wwgts), .SDcols=names(wwgts)]
     }
 
+    # return not necessary if all assign by reference
     return(dat)
 }
 
