@@ -60,7 +60,11 @@ keep = names(trn)[grep('correct|dist$|sdx|mtchs|both|namefreq', names(trn))]
 
 trn = trn[, keep, with=F]
 trn = trn[complete.cases(trn), ]
-apply(trn, 2, range)
+trn = trn[, lapply(.SD, normalise)]
+vld = vld[, lapply(.SD, normalise), .SDcols = names(trn)]
+apply(trn, 2, range, na.rm=T)
+apply(vld, 2, range, na.rm=T)
+# bothwineprod removes a dozen observations or so, consider removing
 
 m_lgt = glm(correct ~ ., family=binomial(link="logit"), data=trn)
 
@@ -191,6 +195,55 @@ plot(perf, col=2)
 # plot(voteshares, fill$spec / sum(!trn$correct), type='l', col=2, ylim=c(0, 1))
 # lines(voteshares, fill$sens / sum(trn$correct), type='l', col=2)
 dev.off()
+
+false_positives_rf = cnd[smpl==0, ][pred_rf_vld[, 2] < 0.5 & correct == TRUE, ]
+
+false_positives_rf[, sum(wlast_to == "" | wlast_from == "")]
+false_positives_rf[, sum(wlast_to == "" & wlast_from == "")]
+false_positives_rf[, sum(wfirst_to == "")]
+# 15/31 had one wife missing, not the other ones
+false_positives_rf[, grep("(last|first)_", names(false_positives_rf)), with = F]
+false_positives_rf[!(wlast_to == "" | wlast_from == ""), grep("(last|first)_", names(false_positives_rf)), with = F]
+# 12/15 remaining ones seem correct (3 of which have KRUGER surname (fourth most frequent)
+# 1/15 seems very likely (LABUSCHAGNE), but different m first name 
+# 1/15 seems very likely (LIEBENBERG), but different w surname 
+# 1/15 seems wrong (JANZEN)
+
+# sensitivity to variable inclusion
+# base AUC
+base_auc = performance(prediction(as.numeric(predict(m_rf, vld)), vld$correct), 'auc')
+
+ml = list()
+for (vrb in names(trn)[-3]){
+    frm = as.formula(paste("factor(correct) ~ . -", vrb))
+    ml[[vrb]] = randomForest(frm, data = trn)
+    print(i)
+}
+perfs = sapply(ml, function(x) performance(prediction(as.numeric(predict(x, vld)), vld$correct), 'auc')@y.values)
+dotchart(unlist(perfs))
+print(xtable(data.table(names(trn)[-3], AUC = unlist(perfs))[order(AUC)],
+        caption = "AUC after omitting one variable", 
+        label = "tab:sens_1var"),
+    file = "linkpaper/sensitivity_1var.tex", 
+    type = 'latex', include.rownames=F)
+
+
+ml = list()
+ncomb = choose(length(names(trn)) - 1, 2)
+combinations = combn(names(trn)[-3], 2)
+for (i in 1:ncomb){
+    frm = as.formula(paste("factor(correct) ~ . -", paste0(combinations[, i], collapse = ' - ')))
+    ml[[i]] = randomForest(frm, data = trn)
+    print(i)
+}
+perfs = sapply(ml, function(x) performance(prediction(as.numeric(predict(x, vld)), vld$correct), 'auc')@y.values)
+dotchart(unlist(perfs))
+plot(unlist(perfs))
+plot(ecdf(unlist(perfs)))
+abline(v = 0.91)
+print(xtable(data.table(t(combinations[, perfs < 0.91]), AUC = unlist(perfs[perfs < 0.91]))[order(AUC)]),
+    type = "latex", "linkpaper/sensitivity_2var.tex")
+combinations[, perfs < 0.88]
 
 # do nowife on entire data with wife set to ''?
 # m_rf_yeswf = randomForest(as.factor(correct) ~ ., data=trn[(wifepresent_from | wifepresent_to), ])
