@@ -8,10 +8,10 @@ library("stringdist")
 # tra <- read.csv('matched.csv')
 # tra <- tra[1:608, ]
 
-opg_full <- fread('fgvf15oct.csv', sep=',', data.table=F)
+opg_full <- fread('fgvf15oct.csv', na.strings = '.')
 opg <- opg_full[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
     "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen',
-    'vines', 'districtdum')]
+    'settlerchildren', 'vines', 'districtdum')]
 
 opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
 opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
@@ -27,7 +27,6 @@ opg$mfirst <- iconv(opg$firstnamemen, from='macroman', to='utf8')
 opg$wlast <- iconv(opg$lastnamewomen, from='macroman', to='utf8')
 opg$wfirst <- iconv(opg$firstnamewomen, from='macroman', to='utf8')
 
-# rm 
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
 opg$mfirst[grep("[^A-Z .]", opg$mfirst)] <- 
     sapply(opg$mfirst[grep("[^A-Z .]", opg$mfirst)], function(x)gregexprr(".*[^A-Z .]", x))
@@ -40,9 +39,7 @@ opg$mfirst[grep("[^A-Z .]", opg$mfirst)]
 opg[(grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast) 
     & grepl("^ *$", opg$wfirst) & grepl("^ *$", opg$wlast)), ] 
 # set NA or drop?
-# NA in stringdistmatrix returns NA
-# strings <- c('johan', 'johann', NA, 'jimbo')
-# stringdist::stringdistmatrix(strings, method='jw')
+# NA in stringdistmatrix returns NA, not useful
 
 opg[grep("^ *$", opg$mfirst), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
 opg[grep("^ *$", opg$mlast), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
@@ -68,7 +65,7 @@ opg[grep("^ *$", opg$mlast), c('mfirst', 'mlast')]
 opg$minitials <- sapply(opg$mfirst, initials)
 opg$winitials <- sapply(opg$wfirst, initials)
 
-opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='')
+opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='') # because F & T = F
 
 opg$spousenamedist <- stringdist::stringdist(opg$mlast, opg$wlast, method='jw', p=0.1)
 opg$wineproducer <- as.numeric(opg$vines) > 0 & !is.na(opg$vines) # j: is NA likely 0 here?
