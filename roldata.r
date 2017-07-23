@@ -40,6 +40,8 @@ opg[(grepl("^ *$", opg$mfirst) & grepl("^ *$", opg$mlast)
     & grepl("^ *$", opg$wfirst) & grepl("^ *$", opg$wlast)), ] 
 # set NA or drop?
 # NA in stringdistmatrix returns NA, not useful
+# stringi::stri_rand_strings(1, length = 8, patter = "[A-Z]")
+# 0.5?;
 
 opg[grep("^ *$", opg$mfirst), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
 opg[grep("^ *$", opg$mlast), c('year', 'mlast', 'mfirst', 'wfirst', 'wlast', 'wid', 'settlerwomen')]
@@ -65,6 +67,9 @@ opg[grep("^ *$", opg$mlast), c('mfirst', 'mlast')]
 opg$minitials <- sapply(opg$mfirst, initials)
 opg$winitials <- sapply(opg$wfirst, initials)
 
+# opg[, mlast_neighbour_lag  := shift(mlast, type = 'lag'), by = list(districtdum, year)]
+# opg[, mlast_neighbour_lead := shift(mlast, type = 'lead'), by = list(districtdum, year)]
+
 opg$wifepresent <- !(opg$wfirst=='' & opg$wlast=='') # because F & T = F
 
 opg$spousenamedist <- stringdist::stringdist(opg$mlast, opg$wlast, method='jw', p=0.1)
@@ -80,7 +85,3 @@ rownames(opg) <- opg$persid <- 1:nrow(opg)
 outfile = gzfile("opg_cleaned.csv.gz", 'w')
 write.csv(opg, outfile)
 close(outfile)
-
-
-# write.csv(opg[opg$year==1828, idvars[1:10]], '~/desktop/opg1828.csv', row.names=F)
-# write.csv(opg[opg$year==1826, idvars[1:10]], '~/desktop/opg1826.csv', row.names=F)
