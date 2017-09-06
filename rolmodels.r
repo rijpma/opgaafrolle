@@ -1,6 +1,6 @@
 rm(list=ls())
 
-setwd('~/dropbox/opgaafrol/')
+# setwd('~/dropbox/opgaafrol/')
 
 library("stringdist")
 library("e1071")
@@ -13,7 +13,8 @@ library("xtable")
 source('rolfunctions.r')
 
 # opg = data.table::fread(input="zcat < opg_cleaned.csv.gz")
-opg = data.table::fread("gunzip -c opg_cleaned.csv.gz", check.names = TRUE)
+opg = data.table::fread("opg_cleaned.csv", check.names = TRUE)
+# opg = data.table::fread("gunzip -c opg_cleaned.csv.gz", check.names = TRUE)
 tra = data.table::fread('matched.csv', check.names = TRUE)
 setnames(tra, c("persid", "V11"), c("persid_1828", "persid_1826"))
 
@@ -53,10 +54,34 @@ fane = sum(is.na(man$manual)[man$correct], na.rm=T)
 fapo = sum(!man$manual, na.rm=T) 
 sens = sum(man$manual, na.rm=T)
 bsl = matrix(c(spec, fane, fapo, sens), ncol=2)
-bsl
+bsl / rowSums(bsl)
 
-keep = names(trn)[grep('correct|[a-z]dist$|sdx|mtchs|both|namefreq|dchild|spouse', names(trn))]
+keep = names(trn)[grep('correct|[a-z]dist$|sdx|mtchs|both|namefreq|dchild|spouse|wifepresent', names(trn))]
 # print(xtable(data.frame(variable = keep, explanation = NA)), include.rownames=F)
+keep_gnl = names(trn)[grep("correct|[wm][a-z]+dist$|sdx|mtchs|namefreq|dchild|wifepresent", names(trn))]
+
+#correct - Y
+#dchildren (difference in the number of children between ogr years) - Y 
+#mtchs (number of candidates) - Y
+#namefreq_from - (auke will check if feasable) 
+#namefreq_to - (auke will check if feasable)
+
+#mfirstdist - Y
+#mfirstsdx - Y
+#minidist- Y
+#mlastdist- Y
+#mlastsdx- Y
+#wfirstdist- Y
+#wfirstsdx- Y
+#wifeinboth - Y
+#wifepresent_from- Y
+#wifepresent_to- Y
+#winidist- Y
+#wlastdist- Y
+#wlastsdx- Y
+
+
+
 
 trn = trn[, keep, with=F]
 trn = trn[complete.cases(trn), ]
@@ -88,19 +113,19 @@ m_lgt = glm(correct ~ ., family=binomial(link="logit"), data=trn)
 
 m_rf = randomForest(as.factor(correct) ~ ., data=trn, mty=5)
 
-set.seed(2718)
-smpl = rbinom(nrow(cnd), 1, p=0.5)
-trn = cnd[smpl==1, ]
-vld = cnd[smpl==0, ]
+# set.seed(2718)
+# smpl = rbinom(nrow(cnd), 1, p=0.5)
+# trn = cnd[smpl==1, ]
+# vld = cnd[smpl==0, ]
 
-keep = names(trn)[grep('correct|[a-z]dist$|sdx|mtchs|wife|both|namefreq|dchild|spouse', names(trn))]
+# keep = names(trn)[grep('correct|[a-z]dist$|sdx|mtchs|wife|both|namefreq|dchild|spouse', names(trn))]
 
-trn = trn[, keep, with=F]
-trn = trn[complete.cases(trn), ]
-trn = trn[, lapply(.SD, normalise)]
-vld = vld[, lapply(.SD, normalise), .SDcols = names(trn)]
-apply(trn, 2, range, na.rm=T)
-apply(vld, 2, range, na.rm=T)
+# trn = trn[, keep, with=F]
+# trn = trn[complete.cases(trn), ]
+# trn = trn[, lapply(.SD, normalise)]
+# vld = vld[, lapply(.SD, normalise), .SDcols = names(trn)]
+# apply(trn, 2, range, na.rm=T)
+# apply(vld, 2, range, na.rm=T)
 
 # do nowife on entire data with wife set to ''?
 m_rf_yeswf = randomForest(as.factor(correct) ~ ., data=trn[(wifepresent_from | wifepresent_to), ])
@@ -120,3 +145,18 @@ m_rf_nowf = randomForest(as.factor(correct) ~ ., data=trn[!(wifepresent_from | w
 # table(trn$correct, pred_nn_trn)
 # pred_nn_vld = predict(m_nn, type='class', newdata=vld)
 # table(vld$correct, pred_nn_vld)
+
+# models for genealogy matching
+set.seed(2718)
+smpl = rbinom(nrow(cnd), 1, p=0.5)
+trn_gnl = cnd[smpl==1, ]
+vld_gnl = cnd[smpl==0, ]
+
+trn_gnl = trn_gnl[, keep_gnl, with=F]
+trn_gnl = trn_gnl[complete.cases(trn_gnl), ]
+trn_gnl = trn_gnl[, lapply(.SD, normalise)]
+vld_gnl = vld_gnl[, lapply(.SD, normalise), .SDcols = names(trn_gnl)]
+apply(trn_gnl, 2, range, na.rm=T)
+apply(vld_gnl, 2, range, na.rm=T)
+
+m_rf_gnl = randomForest(as.factor(correct) ~ ., data=trn_gnl, mty=5)
