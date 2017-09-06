@@ -1,4 +1,4 @@
-setwd("~/dropbox/opgaafrol")
+# setwd("~/dropbox/opgaafrol")
 
 source("rolfunctions.r")
 
