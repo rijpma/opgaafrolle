@@ -5,7 +5,7 @@ normalise <- function(x){
         do.call(cbind, lapply(x, normalise))
     }
 }
-score = function(dat, include_manual = FALSE){
+score = function(dat, include_manual = FALSE, minimal = FALSE){
     stopifnot(data.table::is.data.table(dat))
 
     dat[, mlastdist := stringdist(mlast_from, mlast_to, method='jw', p=0.1)]
@@ -15,9 +15,6 @@ score = function(dat, include_manual = FALSE){
     dat[, wfirstdist := stringdist(wfirst_from, wfirst_to, method='jw', p=0.1)]
     dat[, winidist := stringdist(winitials_from, winitials_to, method='jw', p=0.1)]
 
-    dat[, wmlastdist_from := stringdist(mlast_from, wlast_from, method='jw', p=0.1)]
-    dat[, wmlastdist_to := stringdist(mlast_to, wlast_to, method='jw', p=0.1)]
-    dat[, wmlastdist_cross := stringdist(mlast_from, wlast_to, method='jw', p=0.1)]
 
     # bad for model performance
     # dat[, mlast_neighbour_lag_dist := stringdist(mlast_neighbour_lag_from, mlast_neighbour_lag_to, method='jw', p=0.1)]
@@ -29,16 +26,22 @@ score = function(dat, include_manual = FALSE){
     dat[, wlastsdx := stringdist(wlast_from, wlast_to, method='soundex')]
     dat[, wfirstsdx := stringdist(wfirst_from, wfirst_to, method='soundex')]
 
-    dat[, nrdist := nr_from - nr_to]
-    dat[, bothyoung := young_from == young_to]
-    dat[, bothold := old_from == old_to]
     dat[, wifeinboth := wifepresent_from == wifepresent_to]
-    dat[, samedistrict := districtall_from == districtall_to]
-    dat[, bothwineprod := wineproducer_from == wineproducer_to]
-    dat[, dchildren := settlerchildren_from - settlerchildren_to]    
+
+    if (minimal){
+        dat[, bothyoung := young_from == young_to]
+        dat[, bothold := old_from == old_to]
+        dat[, nrdist := nr_from - nr_to]
+        dat[, wmlastdist_from := stringdist(mlast_from, wlast_from, method='jw', p=0.1)]
+        dat[, wmlastdist_to := stringdist(mlast_to, wlast_to, method='jw', p=0.1)]
+        dat[, wmlastdist_cross := stringdist(mlast_from, wlast_to, method='jw', p=0.1)]
+        dat[, samedistrict := districtall_from == districtall_to]
+        dat[, bothwineprod := wineproducer_from == wineproducer_to]
+        dat[, dchildren := settlerchildren_from - settlerchildren_to]    
+    }
     # stay open
 
-    dat[, mtchs := length(year_from), by=persid_from]
+    dat[, mtchs := .N, by=persid_from]
 
     dat[, exactmtch := mfirst_from==mfirst_to & mlast_from==mlast_to]
 
