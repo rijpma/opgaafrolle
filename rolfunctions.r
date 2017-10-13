@@ -27,7 +27,8 @@ score = function(dat, include_manual = FALSE, minimal = FALSE){
     dat[, wfirstsdx := stringdist(wfirst_from, wfirst_to, method='soundex')]
 
     dat[, wifeinboth := wifepresent_from == wifepresent_to]
-
+    dat[, dchildren := settlerchildren_from - settlerchildren_to]
+    
     if (minimal){
         dat[, bothyoung := young_from == young_to]
         dat[, bothold := old_from == old_to]
@@ -37,7 +38,6 @@ score = function(dat, include_manual = FALSE, minimal = FALSE){
         dat[, wmlastdist_cross := stringdist(mlast_from, wlast_to, method='jw', p=0.1)]
         dat[, samedistrict := districtall_from == districtall_to]
         dat[, bothwineprod := wineproducer_from == wineproducer_to]
-        dat[, dchildren := settlerchildren_from - settlerchildren_to]    
     }
     # stay open
 
