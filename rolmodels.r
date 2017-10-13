@@ -12,9 +12,8 @@ library("xtable")
 
 source('rolfunctions.r')
 
-# opg = data.table::fread(input="zcat < opg_cleaned.csv.gz")
-opg = data.table::fread("opg_cleaned.csv", check.names = TRUE)
-# opg = data.table::fread("gunzip -c opg_cleaned.csv.gz", check.names = TRUE)
+# opg = data.table::fread("opg_cleaned.csv", check.names = TRUE)
+opg = data.table::fread("gunzip -c opg_cleaned.csv.gz", check.names = TRUE)
 tra = data.table::fread('matched.csv', check.names = TRUE)
 setnames(tra, c("persid", "V11"), c("persid_1828", "persid_1826"))
 
@@ -59,29 +58,6 @@ bsl / rowSums(bsl)
 keep = names(trn)[grep('correct|[a-z]dist$|sdx|mtchs|both|namefreq|dchild|spouse|wifepresent', names(trn))]
 # print(xtable(data.frame(variable = keep, explanation = NA)), include.rownames=F)
 keep_gnl = names(trn)[grep("correct|[wm][a-z]+dist$|sdx|mtchs|namefreq|dchild|wifepresent", names(trn))]
-
-#correct - Y
-#dchildren (difference in the number of children between ogr years) - Y 
-#mtchs (number of candidates) - Y
-#namefreq_from - (auke will check if feasable) 
-#namefreq_to - (auke will check if feasable)
-
-#mfirstdist - Y
-#mfirstsdx - Y
-#minidist- Y
-#mlastdist- Y
-#mlastsdx- Y
-#wfirstdist- Y
-#wfirstsdx- Y
-#wifeinboth - Y
-#wifepresent_from- Y
-#wifepresent_to- Y
-#winidist- Y
-#wlastdist- Y
-#wlastsdx- Y
-
-
-
 
 trn = trn[, keep, with=F]
 trn = trn[complete.cases(trn), ]
