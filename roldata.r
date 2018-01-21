@@ -13,9 +13,9 @@ opg <- opg_full[, c("id", "year", "source", "nr", "lastnamemen", "firstnamemen",
     "lastnamewomen", "firstnamewomen", "wid", "old", "young", 'settlerwomen',
     'settlerchildren', 'vines', 'districtdum')]
 
-opg$lastnamemen <- gsub('\x86', 'u', opg$lastnamemen)
-opg$lastnamemen <- gsub('\x83', 'e', opg$lastnamemen)
-opg$lastnamewomen <- gsub('\x83', 'e', opg$lastnamewomen)
+opg$lastnamemen <- gsub('\x86', 'U', opg$lastnamemen)
+opg$lastnamemen <- gsub('\x83', 'E', opg$lastnamemen)
+opg$lastnamewomen <- gsub('\x83', 'E', opg$lastnamewomen)
 
 tools::showNonASCII(opg$lastnamemen)
 tools::showNonASCII(opg$firstnamemen)
