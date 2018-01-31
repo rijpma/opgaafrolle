@@ -8,32 +8,19 @@ source('rolmodels.R')
 
 summary(m_lgt)
 
-texreg::texreg(m_lgt, label = "tab:logitmod", file = "logitmod.tex",
-    caption = "Logistical regression predicting record matches")
+texreg::texreg(m_lgt, label = "tab:logitmod", file = "linkpaper/logitmod.tex",
+    caption = "Logistical regression predicting record matches", 
+    single.row = T, float.pos = 'h!')
 pred_lgt_trn = predict(m_lgt, newdata=trn, type='response')
-fill = NULL
+fill_lgt = NULL
 cuts = seq(0.01, 0.99, length=1000)
 for (i in cuts){
     pred = m_lgt$fit > i
-    fill = rbind(fill, modperf(pred, trn$correct))
+    fill_lgt = rbind(fill_lgt, modperf(pred, trn$correct))
 }
-fillr = fill / rowSums(fill)
-fill$cut = fillr$cut = cuts
+fill_lgtr = fill_lgt / rowSums(fill_lgt)
+fill_lgt$cut = fill_lgtr$cut = cuts
 
-pdf("linkpaper/logitperformance.pdf", width=9, height=5)
-par(mfrow=c(1, 2))
-plot(cuts, fill$fapo / length(!trn$correct), type='l', col=2, xlab = 'threshold', ylab='error rate')
-lines(cuts, fill$fane / length(!trn$correct), type='l', col=2)
-abline(v = c(0.5, cuts[which.min(sqrt(fill[,2]^2 + fill[,3]^2))]), col='gray70')
-text(c(0.25, 0.7), c(0.06, 0.03), c("False positives", "false negatives"))
-
-# plot(cuts, sqrt(fill[,2]^2 + fill[,3]^2), type='l', col=2)
-perf = performance(prediction(pred_lgt_trn, trn$correct), measure="tpr", x.measure="fpr")
-plot(perf, col=2)
-
-# plot(cuts, fill$spec / sum(!trn$correct), type='l', col=2, ylim=c(0, 1))
-# lines(cuts, fill$sens / sum(trn$correct), type='l', col=2)
-dev.off()
 
 conf_lgt_trn = table(trn$correct, pred_lgt_trn > 0.5, dnn=c('actual', 'predicted'))
 pred_lgt_vld = predict(m_lgt, newdata=vld, type='response')
@@ -51,8 +38,12 @@ print(xtable(conf,
     add.to.row = list(pos=list(-1), command=c("& & \\multicolumn{4}{c}{Predicted} \\\\ & & \\multicolumn{2}{c}{Train} & \\multicolumn{2}{c}{Test} \\\\ \\hline \\\\")),
     file = "linkpaper/lgt_confmat.tex")
 
-conf_lgt_trn / rowSums(conf_lgt_trn)
+conf_lgt_trn / rowSums(conf_lgt_trn) # bottom right is sens or tp rate, top right is fp rate
 conf_lgt_vld / rowSums(conf_lgt_vld)
+
+conf_lgt_trn / colSums(conf_lgt_trn) # bottom right is precision or tp / (tp + fp)
+conf_lgt_vld / colSums(conf_lgt_vld)
+
 
 # random forests
 
@@ -89,29 +80,34 @@ print(xtable(conf,
 
 conf_rf_trn / rowSums(conf_rf_trn)
 conf_rf_vld / rowSums(conf_rf_vld)
+conf_rf_trn / colSums(conf_rf_trn)
+conf_rf_vld / colSums(conf_rf_vld)
 
 # find vote optimum
-votes_vld = predict(m_rf, newdata=vld, type='prob')
+votes_trn = predict(m_rf, newdata=trn, type='prob')
 voteshares = seq(0.1, 0.9, by=0.01)
-fill = NULL
+fill_rf = NULL
 for (share in voteshares){
-    fill = rbind(fill, c(table(vld$correct, votes_vld[, 2] > share)))
+    fill_rf = rbind(fill_rf, c(table(trn$correct, votes_trn[, 2] > share)))
 }
-colnames(fill) = c('ff', 'fane', 'fapo', 'tt')
+colnames(fill_rf) = c('ff', 'fane', 'fapo', 'tt')
 
-pdf("linkpaper/rfperformance.pdf", width=9, height=5)
+
+pdf("linkpaper/performance.pdf", width=9, height=5)
 par(mfrow=c(1, 2))
-plot(voteshares, fill[, "fapo"] / length(!trn$correct), type='l', col=2, xlab = 'threshold', ylab='error rate', ylim=range(fill[, 2:3] / length(trn$correct)))
-lines(voteshares, fill[, "fane"] / length(!trn$correct), type='l', col=2)
-text(c(0.3, 0.7), c(0.025, 0.025), c("False positives", "false negatives"))
-abline(v = c(0.5, voteshares[which.min(sqrt(fill[,2]^2 + fill[,3]^2))]), col='gray70')
 
-# plot(voteshares, sqrt(fill[,2]^2 + fill[,3]^2), type='l', col=2)
-perf = performance(prediction(pred_rf_trn[, 2], trn$correct), measure="tpr", x.measure="fpr")
-plot(perf, col=2)
+plot(cuts, fill_lgt$fapo / length(!trn$correct), type='l', col=2, 
+    main = "Logit", xlab = 'threshold', ylab='error rate')
+lines(cuts, fill_lgt$fane / length(trn$correct), type='l', col=2)
+abline(v = c(0.5, cuts[which.min(sqrt(fill_lgt[,2]^2 + fill_lgt[,3]^2))]), col='gray70')
+text(c(0.25, 0.7), c(0.06, 0.03), c("False positives", "False negatives"))
 
-# plot(voteshares, fill$spec / sum(!trn$correct), type='l', col=2, ylim=c(0, 1))
-# lines(voteshares, fill$sens / sum(trn$correct), type='l', col=2)
+plot(voteshares, fill_rf[, "fapo"] / length(!trn$correct), type='l', col=2, 
+    main = "Random Forest", xlab = 'threshold', ylab='error rate', ylim=range(fill_rf[, 2:3] / length(trn$correct)))
+lines(voteshares, fill_rf[, "fane"] / length(!trn$correct), type='l', col=2)
+text(c(0.3, 0.7), c(0.012, 0.015), c("False positives", "False negatives"))
+abline(v = c(0.5, voteshares[which.min(sqrt(fill_rf[,2]^2 + fill_rf[,3]^2))]), col='gray70')
+
 dev.off()
 
 false_positives_rf = cnd[smpl==0, ][pred_rf_vld[, 2] < 0.5 & correct == TRUE, ]
